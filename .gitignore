@@ -1,0 +1,37 @@
+# Pixi
+.pixi/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Build artifacts (pip install, hatch build)
+build/
+dist/
+*.egg-info/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+node_modules/
+
+# Docs build
+site/
+
+# Coverage
+.coverage
+coverage.xml
+
+!docs/assets/*.gif
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Scratch
+AGENTS.md
+use_case.md
+*.out
+*.mp4
+*.gif

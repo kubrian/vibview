@@ -1,0 +1,487 @@
+# ── Rendering — appearance and performance ─────────────────────
+rendering:
+  # Performance preset: low (coarse), medium, high (fine).
+  # Controls sphere subdivision level (low=1, medium=2, high=4).
+  quality: medium
+
+  # Lighting model: null (auto, quality-based default), flat, smooth.
+  shading: null
+
+  # Background colour (hex or named).
+  background_color: "#1e1e24"
+
+  # Fallback atom sphere colour (when element colour is unknown).
+  atom_color: "#4488ff"
+
+  # Fallback atom sphere radius in Å (when element radius is unknown).
+  atom_radius: 0.3
+
+  # Multiplier applied to all covalent radii.
+  radii_scale: 0.8
+
+  # Bond tube colour.
+  bond_color: "#888888"
+
+  # Bond tube radius in Å.
+  bond_radius: 0.08
+
+  # Extra distance added to covalent radius sum for bond detection (Å).
+  bond_tolerance: 0.4
+
+# ── Lighting — scene lighting parameters ──────────────────────
+lighting:
+  # Ambient light colour + alpha (RGBA, 0–1).
+  ambient: [1.0, 1.0, 1.0, 0.85]
+
+  # Diffuse light colour + alpha.
+  diffuse: [1.0, 1.0, 1.0, 0.15]
+
+  # Specular light colour + alpha.
+  specular: [1.0, 1.0, 1.0, 0.35]
+
+  # Specular shininess exponent.
+  shininess: 60.0
+
+# ── Camera — viewport and camera defaults ─────────────────────
+camera:
+  # Field of view (degrees).
+  fov: 45
+
+  # Fill factor for auto-distance calculation.
+  fill_factor: 0.75
+
+  # Minimum camera distance clamp (Å).
+  min_distance: 5.0
+
+  # Default canvas window size (width, height).
+  default_window_size: [608, 608]
+
+  # Axis indicator sub-view size (pixels).
+  axis_view_size: 100
+
+  # Axis indicator sub-view padding (pixels).
+  axis_view_padding: 0
+
+  # Axis indicator sub-view camera distance.
+  axis_camera_distance: 5.0
+
+  # Axis indicator sub-view FOV (degrees).
+  axis_camera_fov: 30
+
+# ── Axis — coordinate axis indicators ─────────────────────────
+axis:
+  # Arrow shaft radius for Cartesian axes (Å).
+  shaft_radius: 0.03
+
+  # Arrow shaft radius for lattice-vector axes (Å).
+  lattice_shaft_radius: 0.04
+
+  # Tip length = vector length × factor (capped at tip_length_max).
+  tip_length_factor: 0.3
+
+  # Maximum tip length (Å).
+  tip_length_max: 0.3
+
+  # Tip radius = shaft_radius × factor.
+  tip_radius_factor: 2.0
+
+  # Colours for lattice-vector axes [a, b, c].
+  colors_lattice: ["#ff8888", "#88ff88", "#8888ff"]
+
+  # Colours for Cartesian axes [x, y, z].
+  colors_cartesian: ["#ff4444", "#44ff44", "#4444ff"]
+
+  # Arrow length in the axis indicator sub-view (Å).
+  arrow_length: 0.8
+
+  # Label offset from arrow tip (Å).
+  label_offset: 0.2
+
+  # Label font size.
+  label_font_size: 40
+
+# ── Animation — viewer animation ──────────────────────────────
+animation:
+  # Interactive viewer frames per second.
+  fps: 30
+
+  # Animation cycle period in seconds.
+  period: 1.0
+
+  # Default maximum atomic displacement amplitude in Å.
+  default_amplitude: 0.1
+
+  # Default mode: animate, static, or overlay.
+  default_mode: "animate"
+
+# ── Lattice — unit-cell box ───────────────────────────────────
+lattice:
+  # Box edge colour.
+  color: "#888888"
+
+  # Box edge tube radius in Å.
+  width: 0.05
+
+  # Box opacity (0–1).
+  alpha: 0.5
+
+# ── Static — displacement arrows ──────────────────────────────
+static:
+  # Maximum arrow displacement amplitude in Å.
+  amplitude: 0.5
+
+  # Arrow colour.
+  arrow_color: "#ff7700"
+
+  # Shaft radius = bond_radius × factor.
+  arrow_shaft_radius_factor: 1.5
+
+  # Cone tip radius = shaft_radius × factor.
+  arrow_tip_radius_factor: 1.5
+
+  # Tip length = vector length × factor (capped).
+  arrow_tip_length_factor: 0.3
+
+  # Maximum tip length = amplitude × factor.
+  arrow_tip_length_max_factor: 0.4
+
+# ── Overlay — wireframe overlays ──────────────────────────────
+overlay:
+  # Maximum displacement amplitude in Å.
+  amplitude: 0.5
+
+  # Equilibrium-structure wireframe colour.
+  eq_color: "#8faacc"
+
+  # Equilibrium wireframe opacity (0–1).
+  eq_alpha: 0.12
+
+  # Tube radius multiplier for equilibrium bonds.
+  eq_radius_multiplier: 1.0
+
+  # Displaced-structure wireframe colour.
+  disp_color: "#ff4040"
+
+  # Displaced wireframe opacity (0–1).
+  disp_alpha: 0.85
+
+  # Tube radius multiplier for displaced bonds.
+  disp_radius_multiplier: 0.67
+
+# ── Display — metadata and overlays ───────────────────────────
+display:
+  # Label shown next to frequency values (e.g. "cm⁻¹").
+  frequency_units: "?"
+
+  # Colour for imaginary-frequency rows in the mode list.
+  imaginary_color: "#ff4444"
+
+  # Show axis indicators (x, y, z arrows).
+  show_axis: true
+
+  # Supercell replication (nx, ny, nz). Only meaningful for periodic structures.
+  supercell: [1, 1, 1]
+
+# ── Export — animation export ─────────────────────────────────
+export:
+  # Frames per second for GIF export.
+  gif_fps: 10
+
+  # Frames per second for MP4 export.
+  mp4_fps: 60
+
+  # Number of oscillation periods to render in the exported file.
+  cycles: 1
+
+# ── Elements — covalent radii, CPK colours, atomic masses ─────
+# These are the built-in defaults.  Override any entry in your user
+# or session config YAML to customise individual element appearance.
+elements:
+  H:
+    radius: 0.31
+    color: "#ffffff"
+    mass: 1.008
+  He:
+    radius: 0.28
+    color: "#d9ffff"
+    mass: 4.003
+  Li:
+    radius: 1.28
+    color: "#cc80ff"
+    mass: 6.94
+  Be:
+    radius: 0.96
+    color: "#c2ff00"
+    mass: 9.012
+  B:
+    radius: 0.84
+    color: "#ffb5b5"
+    mass: 10.81
+  C:
+    radius: 0.76
+    color: "#909090"
+    mass: 12.011
+  N:
+    radius: 0.71
+    color: "#3050f8"
+    mass: 14.007
+  O:
+    radius: 0.66
+    color: "#ff0d0d"
+    mass: 15.999
+  F:
+    radius: 0.57
+    color: "#90e050"
+    mass: 18.998
+  Ne:
+    radius: 0.58
+    color: "#b3e3f5"
+    mass: 20.18
+  Na:
+    radius: 1.66
+    color: "#ab5cf2"
+    mass: 22.99
+  Mg:
+    radius: 1.41
+    color: "#8aff00"
+    mass: 24.305
+  Al:
+    radius: 1.21
+    color: "#bfa6a6"
+    mass: 26.982
+  Si:
+    radius: 1.11
+    color: "#f0c8a0"
+    mass: 28.085
+  P:
+    radius: 1.07
+    color: "#ff8000"
+    mass: 30.974
+  S:
+    radius: 1.05
+    color: "#ffff30"
+    mass: 32.06
+  Cl:
+    radius: 1.02
+    color: "#1ff01f"
+    mass: 35.45
+  Ar:
+    radius: 1.06
+    color: "#80d1e3"
+    mass: 39.948
+  K:
+    radius: 2.03
+    color: "#8f40d4"
+    mass: 39.098
+  Ca:
+    radius: 1.76
+    color: "#3dff00"
+    mass: 40.078
+  Sc:
+    radius: 1.70
+    color: "#e6e6e6"
+    mass: 44.956
+  Ti:
+    radius: 1.60
+    color: "#bfc2c7"
+    mass: 47.867
+  V:
+    radius: 1.53
+    color: "#a6a6ab"
+    mass: 50.942
+  Cr:
+    radius: 1.39
+    color: "#8a99c7"
+    mass: 51.996
+  Mn:
+    radius: 1.39
+    color: "#9c7ac7"
+    mass: 54.938
+  Fe:
+    radius: 1.32
+    color: "#e06633"
+    mass: 55.845
+  Co:
+    radius: 1.26
+    color: "#f090a0"
+    mass: 58.933
+  Ni:
+    radius: 1.24
+    color: "#50d050"
+    mass: 58.693
+  Cu:
+    radius: 1.32
+    color: "#c88033"
+    mass: 63.546
+  Zn:
+    radius: 1.22
+    color: "#7d80b0"
+    mass: 65.38
+  Ga:
+    radius: 1.22
+    color: "#c28f8f"
+    mass: 69.723
+  Ge:
+    radius: 1.20
+    color: "#668f8f"
+    mass: 72.63
+  As:
+    radius: 1.19
+    color: "#bd80e3"
+    mass: 74.922
+  Se:
+    radius: 1.20
+    color: "#ffa100"
+    mass: 78.971
+  Br:
+    radius: 1.20
+    color: "#a62929"
+    mass: 79.904
+  Kr:
+    radius: 1.16
+    color: "#5cb8d1"
+    mass: 83.798
+  Rb:
+    radius: 2.20
+    color: "#702eb0"
+    mass: 85.468
+  Sr:
+    radius: 1.95
+    color: "#00ff00"
+    mass: 87.62
+  Y:
+    radius: 1.90
+    color: "#94ffff"
+    mass: 88.906
+  Zr:
+    radius: 1.75
+    color: "#94e0e0"
+    mass: 91.224
+  Nb:
+    radius: 1.64
+    color: "#73c2c9"
+    mass: 92.906
+  Mo:
+    radius: 1.54
+    color: "#54b5b5"
+    mass: 95.95
+  Tc:
+    radius: 1.47
+    color: "#3b9e9e"
+    mass: 98
+  Ru:
+    radius: 1.46
+    color: "#248f8f"
+    mass: 101.07
+  Rh:
+    radius: 1.42
+    color: "#0a7d8c"
+    mass: 102.906
+  Pd:
+    radius: 1.39
+    color: "#006985"
+    mass: 106.42
+  Ag:
+    radius: 1.45
+    color: "#c0c0c0"
+    mass: 107.868
+  Cd:
+    radius: 1.44
+    color: "#ffd98f"
+    mass: 112.414
+  In:
+    radius: 1.42
+    color: "#a67573"
+    mass: 114.818
+  Sn:
+    radius: 1.39
+    color: "#668080"
+    mass: 118.71
+  Sb:
+    radius: 1.39
+    color: "#9e63b5"
+    mass: 121.76
+  Te:
+    radius: 1.38
+    color: "#d47a00"
+    mass: 127.6
+  I:
+    radius: 1.39
+    color: "#940094"
+    mass: 126.904
+  Xe:
+    radius: 1.40
+    color: "#469eb0"
+    mass: 131.293
+  Cs:
+    radius: 2.44
+    color: "#57178f"
+    mass: 132.905
+  Ba:
+    radius: 2.15
+    color: "#00c900"
+    mass: 137.327
+  Lu:
+    radius: 1.87
+    color: "#00c900"
+    mass: 174.966
+  Hf:
+    radius: 1.75
+    color: "#304d52"
+    mass: 178.486
+  Ta:
+    radius: 1.70
+    color: "#336666"
+    mass: 180.948
+  W:
+    radius: 1.62
+    color: "#337a7a"
+    mass: 183.84
+  Re:
+    radius: 1.51
+    color: "#3a7575"
+    mass: 186.207
+  Os:
+    radius: 1.44
+    color: "#408080"
+    mass: 190.23
+  Ir:
+    radius: 1.41
+    color: "#408080"
+    mass: 192.217
+  Pt:
+    radius: 1.36
+    color: "#a0a0a0"
+    mass: 195.084
+  Au:
+    radius: 1.36
+    color: "#d4a017"
+    mass: 196.967
+  Hg:
+    radius: 1.32
+    color: "#b8b8b8"
+    mass: 200.592
+  Tl:
+    radius: 1.36
+    color: "#a6544d"
+    mass: 204.38
+  Pb:
+    radius: 1.46
+    color: "#575961"
+    mass: 207.2
+  Bi:
+    radius: 1.48
+    color: "#9e4f5e"
+    mass: 208.98
+  Po:
+    radius: 1.40
+    color: "#ab5c00"
+    mass: 209
+  At:
+    radius: 1.50
+    color: "#754f45"
+    mass: 210
+  Rn:
+    radius: 1.50
+    color: "#428296"
+    mass: 222

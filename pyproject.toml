@@ -1,0 +1,99 @@
+[project]
+authors = [{name = "Brian Ku", email = "48638231+kubrian@users.noreply.github.com"}]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "numpy>=2.2.6,<3",
+    "pyyaml>=6.0.3,<7",
+    "vispy>=0.16.2,<0.17",
+    "pyqt6>=6.11.0,<7",
+    "h5py>=3.8,<4",
+    "Pillow>=11.0,<12",
+    "imageio>=2.34,<3",
+]
+description = "Vibrational mode visualization tool for computational chemistry"
+license = {file = "LICENSE"}
+license-files = ["LICENSE"]
+name = "vibview"
+readme = "README.md"
+requires-python = ">=3.10"
+version = "0.1.0"
+
+[project.urls]
+Homepage = "https://kubrian.github.io/vibview"
+Repository = "https://github.com/kubrian/vibview"
+Documentation = "https://kubrian.github.io/vibview"
+Changelog = "https://github.com/kubrian/vibview/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
+
+[project.scripts]
+vibview = "vibview.main:main"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+vibview = { path = ".", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["vibview"]
+omit = ["vibview/examples/*"]
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 80
+
+[tool.pixi.dependencies]
+pyyaml = ">=6.0.3,<7"
+vispy = ">=0.16.2,<0.17"
+pyqt6 = ">=6.11.0,<7"
+h5py = ">=3.8,<4"
+numpy = ">=2.2.6,<3"
+pillow = ">=11.0,<12"
+imageio = ">=2.34,<3"
+pytest = ">=9.1.1,<10"
+pytest-benchmark = ">=5.2.3,<6"
+pytest-cov = ">=6.1.1,<7"
+python = "3.10.*"
+ffmpeg = ">=6,<8"
+imageio-ffmpeg = ">=0.6.0,<0.7"
+mkdocs = ">=1.6"
+mkdocs-material = ">=9.5"
+mkdocstrings = ">=0.25"
+mkdocstrings-python = ">=1.10"
+
+[tool.ruff]
+line-length = 88
+exclude = [".git", "__pycache__", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["vibview"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
