@@ -35,13 +35,14 @@ def _add_input_args(parser: argparse.ArgumentParser) -> None:
     g = parser.add_argument_group("Data selection")
     g.add_argument(
         "--mode",
-        "-i",
+        "-m",
         type=int,
         default=0,
         help="Vibrational mode index (0-based, default: 0)",
     )
     g.add_argument(
         "--qpoint",
+        "-q",
         type=int,
         default=0,
         help="Q-point index (0-based, default: 0)",
