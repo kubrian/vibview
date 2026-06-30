@@ -188,6 +188,7 @@ def parse(
             modes=initial_modes,
             qpoints=qpoints,
             lattice=lattice.tolist(),
+            frequency_units="THz",
         ),
         source=str(yaml_path),
         qpoint_loader=qp_loader,

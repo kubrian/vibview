@@ -1,6 +1,6 @@
 import pytest
 
-from vibview.main import create_parser
+from vibview.main import _load_structure, create_parser
 
 
 class TestCreateParser:
@@ -54,7 +54,7 @@ class TestCreateParser:
                 "view",
                 "input.h5",
                 "native",
-                "-i",
+                "-m",
                 "1",
                 "-c",
                 "cfg.yaml",
@@ -108,3 +108,19 @@ class TestCreateParser:
         parser = create_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["convert", "input.h5", "native"])
+
+    # --- --example flag ---
+
+    def test_example_flag(self):
+        parser = create_parser()
+        args = parser.parse_args(["view", "--example", "water"])
+        assert args.example == "water"
+        assert args.file is None
+
+    def test_example_mutually_exclusive_with_positional_file(self):
+        parser = create_parser()
+        args = parser.parse_args(
+            ["view", "some_file.h5", "native", "--example", "water"]
+        )
+        with pytest.raises(ValueError, match="mutually exclusive"):
+            _load_structure(args)

@@ -8,7 +8,7 @@ All Python invocations go through `pixi run` — never call `python` or `python3
 pixi run pytest                    # all tests
 pixi run pytest tests/test_X.py    # single file
 pixi run pytest -k test_name       # single test
-pre-commit run --all-files && pixi run pytest   # quality gate (coverage: fail_under=80)
+pre-commit run --all-files && pixi run pytest --cov --cov-report=term-missing   # quality gate (coverage: fail_under=80)
 pixi run mkdocs serve              # local mkdocs dev server
 ```
 
@@ -52,6 +52,8 @@ Implementation workflow (strict order):
 5. Delete the proposal file (folded into the implementation commit).
 6. Run the quality gate: `pre-commit run --all-files && pixi run pytest`.
 7. Commit with a conventional message and suggest user review/merge.
+8. When the user approves, squash merge to the target branch and delete the
+   feature branch: `git merge --squash proposal/<name> && git commit -m "<message>" && git branch -D proposal/<name>`.
 
 ## Conventions
 
@@ -92,4 +94,4 @@ Deps in `pyproject.toml`: numpy, pyyaml, vispy, pyqt6, h5py, Pillow, imageio.
 - `_patch_vispy` patches SceneCanvas, Tube, Sphere, Mesh, etc.
 - `_MockMesh` must accept `shading=None` kwarg if changed.
 - `_make_structure(atoms, modes)` builds `Structure` from atom/mode lists.
-- Test H5 file: `src/vibview/examples/h2o.h5`.
+- Test H5 files: `src/vibview/examples/water.h5`, `src/vibview/examples/diamond.h5`.

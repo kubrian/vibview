@@ -161,7 +161,7 @@ CLI overrides > `--config` session YAML > `~/.config/vibview/config.yaml` > pack
 - **Per-mode amplitudes:** `static.amplitude` and `overlay.amplitude` define displacement amplitudes.
 - **Bond detection:** Uses covalent radii + `bond_tolerance`. This method is preferred over a `fixed_cutoff` as it is more physically principled and a single method is sufficient.
 - **Per-element overrides:** Element data lives in the `elements:` section of `defaults.yaml` (single source of truth). Any config layer can override individual radii, colours, and masses.
-- **CLI flag removal:** Configuration is managed via YAML. Only `--mode` and `--qpoint` remain as quick data selection overrides. `vibview init-config` writes a fully-commented template.
+- **CLI flag removal:** Configuration is managed via YAML. Only `--mode`, `--qpoint`, and `--example` remain as quick data selection overrides. `vibview init-config` writes a fully-commented template.
 
 ---
 
@@ -196,6 +196,7 @@ Phonopy band.yaml/mesh.yaml parser supports multi-q-point data with lattice vect
 
 - ORCA `.hess` parsing → animate/static/overlay visualization
 - Phonopy band.yaml/mesh.yaml parsing → animate/static/overlay visualization (multi-q-point)
+- Bundled HDF5 examples (`water.h5`, `diamond.h5`) accessed via the `--example` CLI flag
 - Native HDF5 format for fast loading and compact storage
 - Configurable appearance via YAML cascade
 - PNG sequence, GIF, and MP4 export

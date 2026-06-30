@@ -21,7 +21,7 @@ def _add_input_args(parser: argparse.ArgumentParser) -> None:
         nargs="?",
         type=Path,
         default=None,
-        help="Input file (default: bundled H\u2082O example)",
+        help="Input file (default: bundled water example)",
     )
     parser.add_argument(
         "type",
@@ -33,6 +33,12 @@ def _add_input_args(parser: argparse.ArgumentParser) -> None:
 
     # --- data selection ---
     g = parser.add_argument_group("Data selection")
+    g.add_argument(
+        "--example",
+        "-e",
+        type=str,
+        help="Load bundled example by name (e.g. 'water', 'diamond')",
+    )
     g.add_argument(
         "--mode",
         "-m",
@@ -151,15 +157,25 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure]:
 
     Raises:
         FileNotFoundError: If the input file does not exist.
-        ValueError: If the file format is unsupported or if
-            exporting a non-native file.
+        ValueError: If --example and input file are both provided,
+            if the format is unsupported, if exporting a non-native
+            file, or if --example is set to an unknown name.
     """
     config = Config.load(session_config=args.config)
 
-    if args.file is None:
+    if args.example and args.file is not None:
+        raise ValueError("--example and input file are mutually exclusive")
+
+    if args.example:
+        ex_path = resource_files("vibview.examples").joinpath(f"{args.example}.h5")
+        if not ex_path.exists():
+            raise ValueError(f"Unknown example '{args.example}'")
+        file = ex_path
+        file_type = "native"
+    elif args.file is None:
         if args.command in ("export", "convert"):
             raise ValueError(f"'{args.command}' requires an input file")
-        file = resource_files("vibview.examples").joinpath("h2o.h5")
+        file = resource_files("vibview.examples").joinpath("water.h5")
         file_type = "native"
     else:
         file = args.file

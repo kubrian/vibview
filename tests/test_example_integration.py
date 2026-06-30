@@ -1,4 +1,4 @@
-"""Integration tests using bundled example data (H2O.h5).
+"""Integration tests using bundled example data (water.h5).
 
 Exercises the full pipeline (parser -> Structure -> VispyViewer -> export)
 with real data shapes, catching regressions that unit tests (which use
@@ -23,7 +23,7 @@ class TestViewerFromExample:
     pytestmark = pytest.mark.usefixtures("_mock_qt_window", "_patch_vispy")
 
     def test_viewer_creates_correct_scene(self):
-        file = resource_files("vibview.examples").joinpath("h2o.h5")
+        file = resource_files("vibview.examples").joinpath("water.h5")
         result = parse_file(file, "native")
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
 
@@ -54,7 +54,7 @@ class TestExportFromExample:
     pytestmark = pytest.mark.usefixtures("_mock_qt_window", "_patch_vispy")
 
     def _build_viewer(self):
-        file = resource_files("vibview.examples").joinpath("h2o.h5")
+        file = resource_files("vibview.examples").joinpath("water.h5")
         result = parse_file(file, "native")
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
 
@@ -100,7 +100,7 @@ class TestMainExportDispatch:
     def test_export_from_example_via_main(self):
         from vibview.main import main
 
-        test_file = resource_files("vibview.examples").joinpath("h2o.h5")
+        test_file = resource_files("vibview.examples").joinpath("water.h5")
 
         with (
             patch("vibview.main.parse_file") as mock_parse,
@@ -165,3 +165,62 @@ class TestMainExportDispatch:
 
         assert exit_code == 0
         mock_parse.assert_called_once()
+
+    def test_view_with_example_flag_loads_bundled(self):
+        from vibview.main import main
+
+        with (
+            patch("vibview.main.parse_file") as mock_parse,
+            patch("vibview.main.make_qpoint_loader"),
+            patch("vibview.main.Structure"),
+            patch("vibview.main.VispyViewer"),
+        ):
+            mock_parse.return_value = MagicMock()
+
+            exit_code = main(["view", "--example", "diamond"])
+
+        assert exit_code == 0
+        mock_parse.assert_called_once()
+        loaded_path = mock_parse.call_args[0][0]
+        assert "diamond" in str(loaded_path)
+
+    def test_view_with_unknown_example_errors(self):
+        from vibview.main import main
+
+        exit_code = main(["view", "--example", "nonexistent"])
+        assert exit_code == 1
+
+
+class TestDiamondExample:
+    """Integration tests using the bundled diamond crystal example."""
+
+    pytestmark = pytest.mark.usefixtures("_mock_qt_window", "_patch_vispy")
+
+    def test_viewer_creates_crystal_scene(self):
+        file = resource_files("vibview.examples").joinpath("diamond.h5")
+        result = parse_file(file, "native")
+        structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
+
+        from vibview.renderers.vispy_renderer import VispyViewer
+
+        viewer = VispyViewer(
+            structure,
+            config=Config.defaults(),
+            mode_type="animate",
+            create_window=False,
+        )
+
+        assert len(viewer.scene.atoms.visuals) == 2
+        assert len(viewer.structure.modes) == 6  # 2 atoms × 3 Cartesian DOF
+        assert viewer.scene.is_supercell is False
+
+    def test_qpoint_switching(self):
+        file = resource_files("vibview.examples").joinpath("diamond.h5")
+        result = parse_file(file, "native")
+        structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
+
+        structure.switch_qpoint(10)
+        assert len(structure.modes) == 6
+
+        structure.switch_qpoint(0)
+        assert structure.modes[3].frequency is not None
