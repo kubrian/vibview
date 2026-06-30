@@ -22,16 +22,10 @@ site/
 .coverage
 coverage.xml
 
-!docs/assets/*.gif
-
 # Editor/OS
 .vscode/
 .idea/
 .DS_Store
 
-# Scratch
-AGENTS.md
-use_case.md
-*.out
-*.mp4
-*.gif
+# Scratch — everything generated during development
+scratch/

@@ -12,7 +12,7 @@ pre-commit run --all-files && pixi run pytest   # quality gate (coverage: fail_u
 pixi run mkdocs serve              # local mkdocs dev server
 ```
 
-**Pre-release:** backward compatibility is not a concern. Files/data formats may change freely.
+**Breaking changes always allowed:** All features, APIs, CLI signatures, config keys, file formats, and data models may be changed or removed at any time without notice. No backward compatibility guarantees — this is pre-release software. Effects on the codebase should be noted in proposals but never mitigated via compat shims, deprecation warnings, or migration layers.
 
 ## Entrypoint
 
