@@ -57,24 +57,10 @@ class TestSaveGif:
 
 
 class TestSaveMp4:
-    def test_raises_if_ffmpeg_missing(self, tmp_path: Path):
-        images = _make_dummy_images(3)
-        out = tmp_path / "anim.mp4"
-        with (
-            patch("vibview.renderers.export.shutil.which", return_value=None),
-            pytest.raises(RuntimeError, match="ffmpeg"),
-        ):
-            save_mp4(images, str(out), fps=30)
-
-    def test_calls_imageio_when_ffmpeg_present(self, tmp_path: Path):
+    def test_calls_imageio(self, tmp_path: Path):
         images = _make_dummy_images(3, h=4, w=4)
         out = tmp_path / "anim.mp4"
-        with (
-            patch(
-                "vibview.renderers.export.shutil.which", return_value="/usr/bin/ffmpeg"
-            ),
-            patch("imageio.v3.imwrite") as mock_iio,
-        ):
+        with patch("imageio.v3.imwrite") as mock_iio:
             save_mp4(images, str(out), fps=30)
         mock_iio.assert_called_once()
         args, kwargs = mock_iio.call_args

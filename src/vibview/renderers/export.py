@@ -1,6 +1,5 @@
 """Animation export: PNG sequence, GIF, and MP4 generation."""
 
-import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -74,18 +73,7 @@ def save_mp4(
         output_path: Path for the output MP4 file.
         fps: Frames per second (default 30).
 
-    Raises:
-        RuntimeError: If ffmpeg is not found on $PATH.
     """
-    if shutil.which("ffmpeg") is None:
-        raise RuntimeError(
-            "MP4 export requires ffmpeg on $PATH. Install it with:\n"
-            "  conda install ffmpeg\n"
-            "  apt install ffmpeg        # Debian/Ubuntu\n"
-            "  brew install ffmpeg       # macOS\n"
-            "  conda install ffmpeg      # Windows (via conda)"
-        )
-
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     rgb_images = [img[..., :3] for img in images]

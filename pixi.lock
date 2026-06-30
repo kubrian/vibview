@@ -8990,7 +8990,7 @@ packages:
 - pypi: ./
   name: vibview
   version: 0.1.0
-  sha256: 7d06ebfac4f3952a96aedfbb542fbabdc1e83e66bb2ee10ef3ce118af08afbfe
+  sha256: 379a8426cebd26191f9c5f104703b14b341c1fb084c96a64ad79f70e96ebfa06
   requires_dist:
   - numpy>=2.2.6,<3
   - pyyaml>=6.0.3,<7
@@ -8999,6 +8999,7 @@ packages:
   - h5py>=3.8,<4
   - pillow>=11.0,<12
   - imageio>=2.34,<3
+  - imageio-ffmpeg>=0.6.0,<0.7
   - mkdocs>=1.6 ; extra == 'docs'
   - mkdocs-material>=9.5 ; extra == 'docs'
   - mkdocstrings[python]>=0.25 ; extra == 'docs'
