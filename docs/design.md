@@ -176,14 +176,15 @@ Phonopy band.yaml/mesh.yaml parser supports multi-q-point data with lattice vect
 
 ## 7. Tech Stack
 
-| Component  | Library       | Rationale                            |
-| ---------- | ------------- | ------------------------------------ |
-| Rendering  | vispy + PyQt6 | OpenGL, standalone, X forwarding     |
-| Data       | numpy         | Numerical operations                 |
-| File I/O   | h5py          | HDF5: compression, random access     |
-| Config I/O | pyyaml        | YAML parsing                         |
-| GIF export | Pillow        | Lightweight; no external deps needed |
-| MP4 export | imageio       | H.264 via ffmpeg binary on $PATH     |
+| Component  | Library             | Rationale                            |
+| ---------- | ------------------- | ------------------------------------ |
+| Rendering  | vispy + PyQt6       | OpenGL, standalone, X forwarding     |
+| Platforms  | Linux/macOS/Windows | Cross-platform via pixi/conda-forge  |
+| Data       | numpy               | Numerical operations                 |
+| File I/O   | h5py                | HDF5: compression, random access     |
+| Config I/O | pyyaml              | YAML parsing                         |
+| GIF export | Pillow              | Lightweight; no external deps needed |
+| MP4 export | imageio             | H.264 via ffmpeg binary on $PATH     |
 
 `requires-python = ">=3.10"` for match-statement syntax and `X | Y` type unions.
 

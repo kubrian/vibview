@@ -82,7 +82,8 @@ def save_mp4(
             "MP4 export requires ffmpeg on $PATH. Install it with:\n"
             "  conda install ffmpeg\n"
             "  apt install ffmpeg        # Debian/Ubuntu\n"
-            "  brew install ffmpeg       # macOS"
+            "  brew install ffmpeg       # macOS\n"
+            "  conda install ffmpeg      # Windows (via conda)"
         )
 
     path = Path(output_path)
