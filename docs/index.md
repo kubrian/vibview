@@ -13,11 +13,18 @@ Requires Python 3.10+.
 ## Usage
 
 ```bash
-# Launch the interactive viewer with the bundled H₂O example
+# Launch the interactive viewer with the bundled water example
 vibview view
+
+# List bundled examples and select one
+vibview view --example diamond
+vibview view --example water
 
 # Select a specific mode index
 vibview view --mode 2
+
+# Select a mode on a bundled example
+vibview view --example water --mode 3
 
 # Export an animation (GUI export, or convert then use export subcommand)
 vibview convert water.hess orca -o water.h5

@@ -153,7 +153,7 @@ class TestPhonopyParserSuccess:
 def test_switch_qpoint_on_non_qpoint_data_errors():
     data = VibData(
         atoms=[Atom("O", [0.0, 0.0, 0.0])],
-        modes=[Mode(0, [[1.0, 0.0, 0.0]])],
+        modes=[Mode([[1.0, 0.0, 0.0]])],
     )
     structure = Structure(data)
     with pytest.raises(ValueError, match="No q-point data available"):

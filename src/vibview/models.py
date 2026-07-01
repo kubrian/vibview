@@ -19,22 +19,22 @@ class Mode:
     """A vibrational mode with eigenvectors and optional metadata.
 
     ``eigenvectors`` is a numpy array of shape ``(n_atoms, 3)`` with
-    ``complex64`` dtype.
+    ``complex64`` dtype, normalized to unit vectors.
 
-    They are normalized to unit vectors.
+    Normalisation uses float64 arithmetic so that re-parsing a stored
+    vector always produces the same canonical float32 representation.
     """
 
-    index: int
     eigenvectors: np.ndarray
     frequency: float | None = None
     label: str | None = None
 
     def __post_init__(self) -> None:
-        ev = np.asarray(self.eigenvectors, dtype=np.complex64)
+        ev = np.asarray(self.eigenvectors, dtype=np.complex128)
         norm = np.linalg.norm(ev)
         if norm > 1e-12:
             ev /= norm
-        self.eigenvectors = ev
+        self.eigenvectors = ev.astype(np.complex64)
 
 
 @dataclass
@@ -57,7 +57,7 @@ class VibData:
         for mode in self.modes:
             if len(mode.eigenvectors) != len(self.atoms):
                 raise ValueError(
-                    f"Mode {mode.index} has {len(mode.eigenvectors)} eigenvectors, expected {len(self.atoms)}"
+                    f"Mode has {len(mode.eigenvectors)} eigenvectors, expected {len(self.atoms)}"
                 )
 
 

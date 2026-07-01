@@ -49,12 +49,20 @@ class ModeSelectorPanel(QWidget):
         qpoints: list[list[float]] | None = None,
         initial_qpoint: int = 0,
         initial_supercell: tuple[int, int, int] = (1, 1, 1),
+        source_path: str | None = None,
     ):
         super().__init__()
         self.on_apply: Callable[[], None] | None = None
         self.on_save_animation: (
             Callable[[str, str, Callable[[int, int], None]], None] | None
         ) = None
+        self.on_save_labels: Callable[[], None] | None = None
+
+        self._save_path = source_path
+        self._labels_dirty = False
+        self._is_native = (
+            source_path is not None and Path(source_path).suffix.lower() == ".h5"
+        )
 
         self.current_mode = initial_mode
         self.amplitudes = initial_amplitudes or {
@@ -65,7 +73,7 @@ class ModeSelectorPanel(QWidget):
         self._modes = modes
         self._pending_mode_index = initial_index
         self._imaginary_color = imaginary_color
-        self._sort_column = 0
+        self._sort_column = 1
         self._sort_ascending = True
 
         self._qpoints = qpoints or []
@@ -74,6 +82,7 @@ class ModeSelectorPanel(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
 
         self._build_data_section(layout, initial_qpoint, initial_supercell)
+        self._build_save_labels_button(layout)
         self._build_mode_table(layout, frequency_units)
         self._add_separator(layout)
         self._build_animation_controls(layout, initial_mode, initial_period)
@@ -123,12 +132,25 @@ class ModeSelectorPanel(QWidget):
         self._structure_container.setVisible(is_periodic)
         layout.addWidget(self._structure_container)
 
+    def _build_save_labels_button(self, layout):
+        self.btn_save_labels = QPushButton("Save Labels")
+        self.btn_save_labels.clicked.connect(self._on_save_labels)
+        if not self._is_native:
+            self.btn_save_labels.setEnabled(False)
+            self.btn_save_labels.setToolTip(
+                "Save Labels (requires native H5 format — use 'vibview convert' first)"
+            )
+        else:
+            self.btn_save_labels.setEnabled(False)
+        layout.addWidget(self.btn_save_labels)
+
     def _build_mode_table(self, layout, frequency_units):
         self.table = QTableWidget(0, 3)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.DoubleClicked)
+        self.table.cellChanged.connect(self._on_label_edited)
         self.table.setAlternatingRowColors(True)
         self.table.setShowGrid(False)
 
@@ -138,7 +160,7 @@ class ModeSelectorPanel(QWidget):
 
         hheader = self.table.horizontalHeader()
         hheader.setSortIndicatorShown(True)
-        hheader.setSortIndicator(0, Qt.SortOrder.AscendingOrder)
+        hheader.setSortIndicator(1, Qt.SortOrder.AscendingOrder)
         hheader.sectionClicked.connect(self._on_header_clicked)
 
         for i in range(3):
@@ -282,6 +304,8 @@ class ModeSelectorPanel(QWidget):
         self._rebuild_table()
 
     def _rebuild_table(self):
+        self.table.blockSignals(True)
+
         current_item = self.table.currentItem()
         current_index = (
             current_item.data(Qt.ItemDataRole.UserRole)
@@ -291,31 +315,36 @@ class ModeSelectorPanel(QWidget):
 
         self.table.setRowCount(0)
 
-        sorted_modes = list(self._modes)
+        indexed_modes: list[tuple[int, Mode]] = list(enumerate(self._modes))
         if self._sort_column == 0:
-            sorted_modes.sort(key=lambda m: m.index, reverse=not self._sort_ascending)
+
+            def pos_key(x: tuple[int, Mode]) -> int:
+                return x[0]
+
+            indexed_modes.sort(key=pos_key, reverse=not self._sort_ascending)
         elif self._sort_column == 1:
 
-            def freq_key(m):
-                f = m.frequency
+            def freq_key(x: tuple[int, Mode]):
+                f = x[1].frequency
                 return (1, 0.0) if f is None else (0, f)
 
-            sorted_modes.sort(key=freq_key, reverse=not self._sort_ascending)
+            indexed_modes.sort(key=freq_key, reverse=not self._sort_ascending)
         elif self._sort_column == 2:
 
-            def label_key(m):
-                lab = m.label
+            def label_key(x: tuple[int, Mode]):
+                lab = x[1].label
                 return (1, "") if lab is None else (0, lab)
 
-            sorted_modes.sort(key=label_key, reverse=not self._sort_ascending)
+            indexed_modes.sort(key=label_key, reverse=not self._sort_ascending)
 
-        self.table.setRowCount(len(sorted_modes))
-        for row, m in enumerate(sorted_modes):
-            item = QTableWidgetItem(str(m.index))
-            item.setData(Qt.ItemDataRole.UserRole, m.index)
+        self.table.setRowCount(len(indexed_modes))
+        for row, (pos, m) in enumerate(indexed_modes):
+            item = QTableWidgetItem(str(pos + 1))
+            item.setData(Qt.ItemDataRole.UserRole, pos)
             item.setTextAlignment(
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
             )
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 0, item)
 
             if m.frequency is not None:
@@ -323,17 +352,18 @@ class ModeSelectorPanel(QWidget):
                 freq_item.setTextAlignment(
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                 )
+                freq_item.setFlags(freq_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, 1, freq_item)
             else:
                 self.table.setItem(row, 1, self._make_placeholder("No frequency data"))
 
-            if m.label is not None:
-                self.table.setItem(row, 2, QTableWidgetItem(m.label))
-            else:
-                self.table.setItem(row, 2, self._make_placeholder("No label"))
+            label_item = QTableWidgetItem(m.label if m.label is not None else "")
+            if self._is_native:
+                label_item.setFlags(label_item.flags() | Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 2, label_item)
 
         imag_color = QColor(self._imaginary_color)
-        for row, m in enumerate(sorted_modes):
+        for row, (pos, m) in enumerate(indexed_modes):
             if m.frequency is not None and m.frequency < 0:
                 for col in range(3):
                     item = self.table.item(row, col)
@@ -341,7 +371,6 @@ class ModeSelectorPanel(QWidget):
                         item.setForeground(imag_color)
 
         if current_index is not None:
-            self.table.currentCellChanged.disconnect(self._on_cell_changed)
             for row in range(self.table.rowCount()):
                 item = self.table.item(row, 0)
                 if (
@@ -350,7 +379,8 @@ class ModeSelectorPanel(QWidget):
                 ):
                     self.table.setCurrentCell(row, 0)
                     break
-            self.table.currentCellChanged.connect(self._on_cell_changed)
+
+        self.table.blockSignals(False)
 
     def _on_mode_button_clicked(self, mode_name: str):
         self.amplitudes[self.current_mode] = self.amplitude_spin.value()
@@ -389,8 +419,28 @@ class ModeSelectorPanel(QWidget):
         if self.on_apply:
             self.on_apply()
 
+    def _on_label_edited(self, row: int, col: int) -> None:
+        if col != 2:
+            return
+        item = self.table.item(row, 0)
+        if item is None:
+            return
+        position = item.data(Qt.ItemDataRole.UserRole)
+        text = self.table.item(row, 2).text().strip()
+        self._modes[position].label = text if text else None
+        self._labels_dirty = True
+        if self._is_native:
+            self.btn_save_labels.setEnabled(True)
+
+    def _on_save_labels(self) -> None:
+        if self.on_save_labels:
+            self.on_save_labels()
+
     def set_modes(self, modes: list[Mode]):
         self._modes = modes
+        self._labels_dirty = False
+        if self._is_native:
+            self.btn_save_labels.setEnabled(False)
         self._rebuild_table()
         self._pending_mode_index = min(self._pending_mode_index, max(0, len(modes) - 1))
 
@@ -455,6 +505,7 @@ class VibviewWindow(QMainWindow):
         qpoints: list[list[float]] | None = None,
         initial_qpoint: int = 0,
         initial_supercell: tuple[int, int, int] = (1, 1, 1),
+        source_path: str | None = None,
     ):
         super().__init__()
         self.setWindowTitle("VibView")
@@ -471,6 +522,7 @@ class VibviewWindow(QMainWindow):
             qpoints=qpoints,
             initial_qpoint=initial_qpoint,
             initial_supercell=initial_supercell,
+            source_path=source_path,
         )
         self.panel.setMinimumWidth(self.panel.PANEL_WIDTH)
 

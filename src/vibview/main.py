@@ -146,14 +146,14 @@ def _run_init_config(args: argparse.Namespace) -> int:
     return 0
 
 
-def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure]:
+def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure, str | None]:
     """Load config, parse file, and build Structure.
 
     Args:
         args: Parsed CLI arguments.
 
     Returns:
-        Tuple of (config, structure).
+        Tuple of (config, structure, source_path).
 
     Raises:
         FileNotFoundError: If the input file does not exist.
@@ -202,7 +202,7 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure]:
     if args.qpoint != 0:
         structure.switch_qpoint(args.qpoint)
 
-    return config, structure
+    return config, structure, result.source
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -224,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run_init_config(args)
 
     try:
-        config, structure = _load_structure(args)
+        config, structure, source_path = _load_structure(args)
     except (FileNotFoundError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -239,6 +239,7 @@ def main(argv: list[str] | None = None) -> int:
             mode_index=args.mode,
             qpoint_index=args.qpoint,
             supercell=supercell,
+            source_path=source_path,
         )
         viewer.run()
 
@@ -251,6 +252,7 @@ def main(argv: list[str] | None = None) -> int:
             qpoint_index=args.qpoint,
             create_window=False,
             supercell=supercell,
+            source_path=source_path,
         )
         viewer.export_animation(format=args.format, name=args.name)
 

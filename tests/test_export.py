@@ -111,7 +111,7 @@ class TestExportAnimationOnViewer:
         from vibview.renderers.vispy_renderer import VispyViewer
 
         return VispyViewer(
-            _make_structure([Atom("O", [0.0, 0.0, 0.0])], [Mode(0, [[1.0, 0.0, 0.0]])]),
+            _make_structure([Atom("O", [0.0, 0.0, 0.0])], [Mode([[1.0, 0.0, 0.0]])]),
             config=Config.defaults(),
             mode_type="animate",
         )

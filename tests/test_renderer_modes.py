@@ -16,8 +16,8 @@ class TestSwitchMode:
     def test_reuses_spheres(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode(1, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
         ]
         structure = _make_structure(atoms, modes)
         cfg = Config.defaults()
@@ -42,8 +42,8 @@ class TestSwitchMode:
     def test_restarts_timer_in_vibration_mode(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode(1, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
         ]
         structure = _make_structure(atoms, modes)
         cfg = Config.defaults()
@@ -57,8 +57,8 @@ class TestSwitchMode:
     def test_reuses_bond_transforms(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode(1, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]], frequency=500.0, label="test"),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]], frequency=500.0, label="test"),
         ]
         structure = _make_structure(atoms, modes)
         cfg = Config.defaults()
@@ -78,7 +78,7 @@ class TestAmplitudePeriodChanges:
         return VispyViewer(
             _make_structure(
                 [Atom("H", [0.0, 0.0, 0.0])],
-                [Mode(0, [[1.0, 0.0, 0.0]])],
+                [Mode([[1.0, 0.0, 0.0]])],
             ),
             config=Config.defaults(),
             mode_type=mode_type,
@@ -119,8 +119,8 @@ class TestSwitchModeDirect:
     def test_switch_mode_updates_index(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode(1, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
         ]
         structure = _make_structure(atoms, modes)
         viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")

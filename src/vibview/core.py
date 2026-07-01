@@ -8,6 +8,11 @@ from vibview.config import Config
 from vibview.models import Mode, VibData
 
 
+def _freq_sort_key(m: Mode):
+    f = m.frequency
+    return (1, 0.0) if f is None else (0, f)
+
+
 class Structure:
     """Atoms and vibrational modes (molecular or periodic)."""
 
@@ -20,28 +25,27 @@ class Structure:
         self.qpoint_index: int = 0
         self.qpoint_loader = qpoint_loader
         self.atoms = data.atoms
+        self.data.modes.sort(key=_freq_sort_key)
         self.modes = data.modes
         self.xyz = np.array([a.xyz for a in self.atoms])
-        self._mode_dict: dict[int, Mode] = {m.index: m for m in data.modes}
 
-    def get_mode(self, mode_index: int) -> Mode:
-        """Get a vibrational mode by index.
+    def get_mode(self, position: int) -> Mode:
+        """Get a vibrational mode by its frequency-sorted position.
 
         Args:
-            mode_index: The 0-based mode index.
+            position: The 0-based position in the frequency-sorted list.
 
         Returns:
             The matching Mode.
 
         Raises:
-            ValueError: If no mode with the given index exists.
+            IndexError: If position is out of range.
         """
-        try:
-            return self._mode_dict[mode_index]
-        except KeyError:
-            raise ValueError(
-                f"Mode index {mode_index} not found. Available indices: {list(self._mode_dict)}"
-            )
+        if 0 <= position < len(self.modes):
+            return self.modes[position]
+        raise IndexError(
+            f"Mode position {position} out of range (0–{len(self.modes) - 1})"
+        )
 
     def detect_bonds(
         self, tolerance: float, config: Config
@@ -79,8 +83,8 @@ class Structure:
             )
         self.qpoint_index = qpoint_index
         self.data.modes = self.qpoint_loader(qpoint_index)
+        self.data.modes.sort(key=_freq_sort_key)
         self.modes = self.data.modes
-        self._mode_dict = {m.index: m for m in self.modes}
 
 
 def displacement_scale(eigenvectors: np.ndarray, amplitude: float) -> float:

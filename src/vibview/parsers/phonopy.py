@@ -105,9 +105,7 @@ def _parse_qpoint_entry(
     q_modes: list[Mode] = []
     for bi, band in enumerate(bands):
         ev = _parse_eigenvector(band["eigenvector"], n_atoms, masses)
-        q_modes.append(
-            Mode(index=bi, eigenvectors=ev, frequency=float(band["frequency"]))
-        )
+        q_modes.append(Mode(eigenvectors=ev, frequency=float(band["frequency"])))
     return q_modes
 
 

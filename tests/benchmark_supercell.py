@@ -34,7 +34,7 @@ def supercell(request):
 def benchmark_structure():
     """O2 molecule (2 atoms) with lattice for supercell expansion."""
     atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
-    mode = Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
+    mode = Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
     return _make_structure_with_lattice(atoms, [mode], LATTICE)
 
 

@@ -35,13 +35,14 @@ Cartesian coordinates in Å.
 ```python
 @dataclass
 class Mode:
-    index: int
-    eigenvectors: np.ndarray  # complex64, shape (n_atoms, 3)
+    eigenvectors: np.ndarray  # complex64 (internal), shape (n_atoms, 3)
     frequency: float | None = None
     label: str | None = None
 ```
 
-Eigenvectors are Cartesian displacement vectors in Å, L2-normalized over all 3N components (‖e‖ = 1). Frequency is optional. Negative frequencies (imaginary modes) are flagged (default red) in the mode list.
+Eigenvectors are Cartesian displacement vectors in Å, L2-normalized over all 3N components (‖e‖ = 1). Normalisation uses float64 arithmetic to guarantee a fixed point across re-parsing. Frequency is optional. Negative frequencies (imaginary modes) are flagged (default red) in the mode list.
+
+Modes are frequency-sorted ascending at load time (both molecular and per-q-point for crystals). Modes with `frequency=None` sort after all numeric frequencies. The `#` column in the mode selector displays the 1-indexed frequency-sorted position.
 
 ---
 
@@ -63,20 +64,32 @@ Each parser module exposes `parse(path: Path, ...) -> ParseResult`. Post-parse v
 
 ```
 /                           Root group
+├── atoms/
+│   ├── symbols             [dataset: (Nat,) UTF-8 string]
+│   └── positions           [dataset: (Nat, 3) float64, Å]
 ├── lattice                 [dataset: (3, 3) float64, optional]
 ├── qpoints                 [dataset: (Nq, 3) float64, optional]
-└── atoms/
-    ├── symbols             [dataset: (Nat,) UTF-8 string]
-    └── positions           [dataset: (Nat, 3) float64, Å]
 └── modes/
-    ├── eigenvectors        [dataset: (Nmodes, Nat, 3) float64]
-    │                       [crystal: (Nq, Nb, Nat, 3) float64]
+    ├── eigenvectors        [dataset: (Nmodes, Nat, 3) float16] — molecular
+    │                       [dataset: (Nq, Nb, Nat, 3, 2) float16] — crystal
+    │                       crystal last dim = (real, imag); upcast to complex64 on read
     ├── frequencies         [dataset: (Nmodes,) float64]
     │   └── units           [attr: string, optional]
     └── labels              [dataset: (Nmodes,) UTF-8 string, optional]
 ```
 
-Molecular data uses 3D eigenvectors; crystal data uses 4D. Crystal files use per-q-point chunking (`chunks=(1, n_bands, n_atoms, 3)`) to enable O(1) HDF5 seek for lazy loading.
+Molecular: 3D float16 eigenvectors (real only). Crystal: 5D float16 stacked as `(real, imag)` pairs, halving file size with no visible quality loss. Both use per-q-point chunking to enable O(1) HDF5 seek for lazy loading.
+
+### Eigenvector precision rationale
+
+Crystal eigenvectors are stored as **float16** (half-precision IEEE 754) real/imaginary pairs rather than complex64 (float32). This was chosen after benchmarking on a 56 MB phonopy file (204 q-points × 72 bands × 24 atoms):
+
+| Storage    | File size | Angular error (max) | Notes                           |
+| ---------- | :-------: | :-----------------: | ------------------------------- |
+| complex64  |  7.58 MB  |          0          | Baseline                        |
+| float16 ×2 |  3.76 MB  |       0.0004°       | 50% reduction, no visual impact |
+
+float16 precision (~0.001 for unit-vector components) is 100× beyond what is needed for pixel-level rendering on 2000 px displays. `Mode.__post_init__` normalizes using float64 arithmetic before downcasting to complex64 for internal use, so the on-disk format has no effect on computation precision.
 
 ### Lazy loading
 
@@ -102,7 +115,7 @@ Three modes are selectable via the UI buttons (`Animate`, `Static`, `Overlay`):
 
 ### Mode selection & frequency display
 
-Modes are selected by 0-based index. Frequency is displayed if present. Unit label uses `data.frequency_units` falling back to `config.display.frequency_units` (default `"?"`).
+Modes are selected by frequency-sorted position (0-based internally, 1-indexed in the table UI). Frequency is displayed if present with default sort ascending on this column. Unit label uses `data.frequency_units` falling back to `config.display.frequency_units` (default `"?"`). Labels are editable inline for native HDF5 files only; editing sets a dirty flag and enables a Save Labels button. Switching q-points with dirty labels shows a confirmation dialog.
 
 ### Animation engine
 
@@ -192,15 +205,6 @@ Phonopy band.yaml/mesh.yaml parser supports multi-q-point data with lattice vect
 
 ## 8. Scope & Rationale
 
-### In scope
-
-- ORCA `.hess` parsing → animate/static/overlay visualization
-- Phonopy band.yaml/mesh.yaml parsing → animate/static/overlay visualization (multi-q-point)
-- Bundled HDF5 examples (`water.h5`, `diamond.h5`) accessed via the `--example` CLI flag
-- Native HDF5 format for fast loading and compact storage
-- Configurable appearance via YAML cascade
-- PNG sequence, GIF, and MP4 export
-
 ### Deferred (may revisit)
 
 - Conda packaging
@@ -214,8 +218,5 @@ Phonopy band.yaml/mesh.yaml parser supports multi-q-point data with lattice vect
 | **`cclib` dependency**                    | Large and complex. Custom parsers provide better control and a smaller footprint.      |
 | **`phonopy` Python API**                  | Heavy dependency. Custom YAML parser is sufficient.                                    |
 | **Additional parsers (VASP, Gaussian)**   | Not needed for current use cases. Adding only upon demand.                             |
-| **WebM export**                           | MP4 covers current needs; no priority.                                                 |
 | **Text-based native formats (JSON/YAML)** | HDF5 provides compression and random access that text formats cannot.                  |
-| **`color_scheme` switching**              | CPK from built-in elements is sufficient; `rendering.atom_color` allows overrides.     |
 | **IR/Raman intensities**                  | Viewer only — no analysis.                                                             |
-| **`mass_weighted` override**              | Each parser handles its own normalisation; Core assumes Cartesian-normalised.          |

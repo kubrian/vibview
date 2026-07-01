@@ -1,5 +1,14 @@
 # vibview — Agent Instructions
 
+## Task handling
+
+When given a task, first determine if it is **small/obvious** (typo fix, mechanical rename, trivial parameter change) or **non-trivial** (new feature, bug fix, architecture change, anything touching >1 file).
+
+- **Small/obvious:** Lightweight restatement in chat — goal, target files, acceptance criteria — then wait for approval before coding.
+- **Non-trivial:** Expand to a full proposal in chat — Problem, Diagnosis, Proposed solution, Non-goals, Test plan — then wait for approval before coding.
+
+Never go straight to code without a restatement or proposal.
+
 ## Commands
 
 All Python invocations go through `pixi run` — never call `python` or `python3` directly.
@@ -37,7 +46,7 @@ Mode, amplitude, quality, axis visibility, and supercell are configured via YAML
 
 ## Proposals
 
-File under `docs/proposals/` with format: title `# Proposal: <name>`, one-line summary `> <...>`, `---`, then sections `## Problem` → `## Diagnosis` → `## Proposed solution` → `## Rationale`.
+File under `docs/proposals/` following the template in `docs/task_spec.md`.
 
 When the user says "work on <proposal>" or "implement <proposal>", follow the
 implementation workflow below automatically without asking for approval first.
@@ -68,9 +77,15 @@ Implementation workflow (strict order):
   documentation current is part of every change, not a separate task.
 - **Test-first:** Write the failing test before implementation.
 - **Conventional commits:** `type: description` (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
-- **YAGNI:** Prefer simplest correct solution. No ABCs, hooks, or multi-version support without need.
+- **One commit per task:** Before committing, inspect `git diff`. Revert scope creep, dead code, speculative abstractions.
+- **Non-goals are law:** If non-goals are specified, the diff must not touch those areas — even if the code there is ugly.
+- **YAGNI:** No base classes, interfaces, or abstractions introduced "just in case." A 30-line function is fine. Prefer simplest correct solution. No ABCs, hooks, or multi-version support without need.
 - **No dead code:** Remove unused functions, imports, config keys. Never comment them out.
 - **No silent failures:** Every error path raises or logs with context. No bare `except`, no ignored return values.
+
+## Commits for this session
+
+When committing the mode-and-label-semantics work, use a message describing the removal of Mode.index and the frequency-sort invariant. Proceed with a squash merge when the user approves.
 
 ## Parser formats
 

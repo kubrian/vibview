@@ -5,9 +5,12 @@ Delegates camera, scene, and animation to focused sub-controllers.
 
 import sys
 from collections.abc import Callable
+from pathlib import Path
 
+from PyQt6.QtWidgets import QMessageBox
 from vispy import app
 
+from vibview.parsers import native as native_parser
 from vibview.renderers.animation_controller import AnimationController
 from vibview.renderers.camera_controller import CameraController
 from vibview.renderers.export import (
@@ -31,12 +34,14 @@ class VispyViewer:
         qpoint_index: int = 0,
         create_window: bool = True,
         supercell: tuple[int, int, int] | None = None,
+        source_path: str | None = None,
     ):
         self.structure = structure
         self.mode_index = mode_index
         self.qpoint_index = qpoint_index
         self.mode_type = mode_type
         self.supercell = tuple(supercell) if supercell is not None else None
+        self._source_path = source_path
 
         self.fps = config.animation.fps
         self.period = config.animation.period
@@ -108,13 +113,31 @@ class VispyViewer:
             qpoints=qpoints,
             initial_qpoint=qpoint_index,
             initial_supercell=self.supercell or (1, 1, 1),
+            source_path=self._source_path,
         )
         self.window.on_camera_reset = self.camera.reset_camera
         self.window.panel.on_apply = self._on_apply
         self.window.panel.on_save_animation = self.export_animation
+        self.window.panel.on_save_labels = self._on_save_labels
 
     # ── Q-point switching ──
     def switch_qpoint(self, qpoint_index) -> None:
+        if qpoint_index == self.qpoint_index:
+            return
+        panel = self.window.panel
+        if panel._labels_dirty:
+            reply = QMessageBox.question(
+                panel,
+                "Unsaved Labels",
+                "You have unsaved label changes. Save before switching?",
+                QMessageBox.StandardButton.Save
+                | QMessageBox.StandardButton.Discard
+                | QMessageBox.StandardButton.Cancel,
+            )
+            if reply == QMessageBox.StandardButton.Save:
+                self._on_save_labels()
+            elif reply == QMessageBox.StandardButton.Cancel:
+                return
         self.qpoint_index = qpoint_index
         self.structure.switch_qpoint(qpoint_index)
         self.window.panel.set_modes(self.structure.modes)
@@ -154,6 +177,23 @@ class VispyViewer:
         self.period = new_per
         self.animation.period = new_per
         self.switch_mode(new_mi)
+
+    def _on_save_labels(self) -> None:
+        panel = self.window.panel
+        path: str | None = panel._save_path
+        if path is None or Path(path).suffix.lower() != ".h5":
+            return
+
+        p = Path(path)
+        qp_idx = self.qpoint_index if self.structure.data.qpoints else None
+        try:
+            native_parser.update_labels(p, self.structure.modes, qpoint_index=qp_idx)
+        except (OSError, KeyError) as e:
+            QMessageBox.warning(panel, "Save Failed", f"Could not save labels:\n{e}")
+            return
+
+        panel._labels_dirty = False
+        panel.btn_save_labels.setEnabled(False)
 
     def _apply_supercell(self, new_sc: tuple[int, int, int]) -> None:
         self.supercell = new_sc
