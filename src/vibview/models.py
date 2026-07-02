@@ -20,21 +20,18 @@ class Mode:
 
     ``eigenvectors`` is a numpy array of shape ``(n_atoms, 3)`` with
     ``complex64`` dtype, normalized to unit vectors.
-
-    Normalisation uses float64 arithmetic so that re-parsing a stored
-    vector always produces the same canonical float32 representation.
     """
 
     eigenvectors: np.ndarray
-    frequency: float | None = None
+    frequency: float = 0.0
     label: str | None = None
 
     def __post_init__(self) -> None:
-        ev = np.asarray(self.eigenvectors, dtype=np.complex128)
+        ev = np.asarray(self.eigenvectors, dtype=np.complex64)
         norm = np.linalg.norm(ev)
         if norm > 1e-12:
             ev /= norm
-        self.eigenvectors = ev.astype(np.complex64)
+        self.eigenvectors = ev
 
 
 @dataclass

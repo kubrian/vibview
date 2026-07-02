@@ -280,15 +280,6 @@ class ModeSelectorPanel(QWidget):
         sep.setFrameShadow(QFrame.Shadow.Sunken)
         layout.addWidget(sep)
 
-    @staticmethod
-    def _make_placeholder(tooltip: str) -> QTableWidgetItem:
-        item = QTableWidgetItem("\u2014")
-        f = item.font()
-        f.setItalic(True)
-        item.setFont(f)
-        item.setToolTip(tooltip)
-        return item
-
     def _on_header_clicked(self, section: int):
         if section == self._sort_column:
             self._sort_ascending = not self._sort_ascending
@@ -323,12 +314,10 @@ class ModeSelectorPanel(QWidget):
 
             indexed_modes.sort(key=pos_key, reverse=not self._sort_ascending)
         elif self._sort_column == 1:
-
-            def freq_key(x: tuple[int, Mode]):
-                f = x[1].frequency
-                return (1, 0.0) if f is None else (0, f)
-
-            indexed_modes.sort(key=freq_key, reverse=not self._sort_ascending)
+            indexed_modes.sort(
+                key=lambda x: x[1].frequency,
+                reverse=not self._sort_ascending,
+            )
         elif self._sort_column == 2:
 
             def label_key(x: tuple[int, Mode]):
@@ -347,15 +336,12 @@ class ModeSelectorPanel(QWidget):
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 0, item)
 
-            if m.frequency is not None:
-                freq_item = QTableWidgetItem(str(m.frequency))
-                freq_item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
-                freq_item.setFlags(freq_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                self.table.setItem(row, 1, freq_item)
-            else:
-                self.table.setItem(row, 1, self._make_placeholder("No frequency data"))
+            freq_item = QTableWidgetItem(str(m.frequency))
+            freq_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+            freq_item.setFlags(freq_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 1, freq_item)
 
             label_item = QTableWidgetItem(m.label if m.label is not None else "")
             if self._is_native:
@@ -364,7 +350,7 @@ class ModeSelectorPanel(QWidget):
 
         imag_color = QColor(self._imaginary_color)
         for row, (pos, m) in enumerate(indexed_modes):
-            if m.frequency is not None and m.frequency < 0:
+            if m.frequency < 0:
                 for col in range(3):
                     item = self.table.item(row, col)
                     if item is not None:

@@ -10,7 +10,6 @@ from pathlib import Path
 from PyQt6.QtWidgets import QMessageBox
 from vispy import app
 
-from vibview.parsers import native as native_parser
 from vibview.renderers.animation_controller import AnimationController
 from vibview.renderers.camera_controller import CameraController
 from vibview.renderers.export import (
@@ -20,6 +19,7 @@ from vibview.renderers.export import (
 )
 from vibview.renderers.qt_window import VibviewWindow
 from vibview.renderers.scene_builder import SceneBuilder
+from vibview.storage import update_labels
 
 
 class VispyViewer:
@@ -187,7 +187,7 @@ class VispyViewer:
         p = Path(path)
         qp_idx = self.qpoint_index if self.structure.data.qpoints else None
         try:
-            native_parser.update_labels(p, self.structure.modes, qpoint_index=qp_idx)
+            update_labels(p, self.structure.modes, qpoint_index=qp_idx)
         except (OSError, KeyError) as e:
             QMessageBox.warning(panel, "Save Failed", f"Could not save labels:\n{e}")
             return

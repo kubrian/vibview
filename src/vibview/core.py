@@ -8,11 +8,6 @@ from vibview.config import Config
 from vibview.models import Mode, VibData
 
 
-def _freq_sort_key(m: Mode):
-    f = m.frequency
-    return (1, 0.0) if f is None else (0, f)
-
-
 class Structure:
     """Atoms and vibrational modes (molecular or periodic)."""
 
@@ -25,7 +20,7 @@ class Structure:
         self.qpoint_index: int = 0
         self.qpoint_loader = qpoint_loader
         self.atoms = data.atoms
-        self.data.modes.sort(key=_freq_sort_key)
+        self.data.modes.sort(key=lambda m: m.frequency)
         self.modes = data.modes
         self.xyz = np.array([a.xyz for a in self.atoms])
 
@@ -83,7 +78,7 @@ class Structure:
             )
         self.qpoint_index = qpoint_index
         self.data.modes = self.qpoint_loader(qpoint_index)
-        self.data.modes.sort(key=_freq_sort_key)
+        self.data.modes.sort(key=lambda m: m.frequency)
         self.modes = self.data.modes
 
 

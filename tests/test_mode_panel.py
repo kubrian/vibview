@@ -21,43 +21,18 @@ class TestModeSelectorPanel:
         assert not p.table.isColumnHidden(2)
 
     @pytest.mark.parametrize(
-        ("mode_kwargs", "col", "expected_text", "expect_italic"),
+        ("mode_kwargs", "col", "expected_text"),
         [
-            ({"frequency": None}, 1, "\u2014", True),
-            ({"frequency": 1550.0}, 1, "1550.0", False),
-            ({"label": None}, 2, "", False),
-            ({"label": "test"}, 2, "test", False),
+            ({"frequency": 1550.0}, 1, "1550.0"),
+            ({"label": None}, 2, ""),
+            ({"label": "test"}, 2, "test"),
         ],
     )
-    def test_missing_value_display(
-        self, mode_kwargs, col, expected_text, expect_italic
-    ):
+    def test_missing_value_display(self, mode_kwargs, col, expected_text):
         mode = Mode([[0.0, 0.0, 0.0]], **mode_kwargs)
         p = self.Panel([mode])
         item = p.table.item(0, col)
         assert item.text() == expected_text
-        assert item.font().italic() == expect_italic
-        if expect_italic:
-            assert item.toolTip() != ""
-        else:
-            assert item.toolTip() == ""
-
-    def test_mix_of_present_and_missing_values(self):
-        modes = [
-            Mode([[0.0, 0.0, 0.0]], frequency=1550.0, label="test"),
-            Mode([[0.0, 0.0, 0.0]]),
-        ]
-        p = self.Panel(modes)
-
-        assert p.table.item(0, 1).text() == "1550.0"
-        assert not p.table.item(0, 1).font().italic()
-        assert p.table.item(0, 2).text() == "test"
-        assert not p.table.item(0, 2).font().italic()
-
-        assert p.table.item(1, 1).text() == "\u2014"
-        assert p.table.item(1, 1).font().italic()
-        assert p.table.item(1, 2).text() == ""
-        assert not p.table.item(1, 2).font().italic()
 
     def test_missing_freq_does_not_hide_freq_column(self):
         modes = [Mode([[1.0, 0.0, 0.0]])]
@@ -176,31 +151,6 @@ class TestModeSelectorPanel:
         assert p._sort_column == 0
         assert p._sort_ascending is True
 
-    def test_none_frequencies_sort_to_end_ascending(self):
-        modes = [
-            Mode([[0.0, 0.0, 1.0]], frequency=1550.0),
-            Mode([[1.0, 0.0, 0.0]], frequency=None),
-            Mode([[0.0, 1.0, 0.0]], frequency=500.0),
-        ]
-        p = self.Panel(modes)
-        assert p._sort_column == 1
-        assert p.table.item(0, 0).data(Qt.ItemDataRole.UserRole) == 2
-        assert p.table.item(1, 0).data(Qt.ItemDataRole.UserRole) == 0
-        assert p.table.item(2, 0).data(Qt.ItemDataRole.UserRole) == 1
-
-    def test_none_frequencies_sort_to_end_descending(self):
-        modes = [
-            Mode([[0.0, 0.0, 1.0]], frequency=1550.0),
-            Mode([[1.0, 0.0, 0.0]], frequency=None),
-            Mode([[0.0, 1.0, 0.0]], frequency=500.0),
-        ]
-        p = self.Panel(modes)
-        p.table.horizontalHeader().sectionClicked.emit(1)
-        # descending: None first, then highest-to-lowest freq
-        assert p.table.item(0, 0).data(Qt.ItemDataRole.UserRole) == 1
-        assert p.table.item(1, 0).data(Qt.ItemDataRole.UserRole) == 0
-        assert p.table.item(2, 0).data(Qt.ItemDataRole.UserRole) == 2
-
     def test_none_labels_sort_to_end_ascending(self):
         modes = [
             Mode([[0.0, 0.0, 1.0]], label="z"),
@@ -282,7 +232,7 @@ class TestModeSelectorPanel:
         p.table.horizontalHeader().sectionClicked.emit(1)
         for row in range(p.table.rowCount()):
             pos = p.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-            is_imag = modes[pos].frequency is not None and modes[pos].frequency < 0
+            is_imag = modes[pos].frequency < 0
             for col in range(3):
                 item = p.table.item(row, col)
                 assert item is not None

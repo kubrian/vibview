@@ -25,7 +25,7 @@ class TestRegistryContents:
                 "eigenvectors",
                 data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
             )
-            g.create_dataset("frequencies", data=np.array([np.nan], dtype=np.float64))
+            g.create_dataset("frequencies", data=np.array([0.0], dtype=np.float64))
         result = parse(p, "native")
         assert result.source == str(p)
 

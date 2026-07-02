@@ -36,13 +36,13 @@ Cartesian coordinates in Å.
 @dataclass
 class Mode:
     eigenvectors: np.ndarray  # complex64 (internal), shape (n_atoms, 3)
-    frequency: float | None = None
+    frequency: float = 0.0
     label: str | None = None
 ```
 
-Eigenvectors are Cartesian displacement vectors in Å, L2-normalized over all 3N components (‖e‖ = 1). Normalisation uses float64 arithmetic to guarantee a fixed point across re-parsing. Frequency is optional. Negative frequencies (imaginary modes) are flagged (default red) in the mode list.
+Eigenvectors are Cartesian displacement vectors in Å, L2-normalized over all 3N components (‖e‖ = 1). Frequency is mandatory. Negative frequencies (imaginary modes) are flagged (default red) in the mode list.
 
-Modes are frequency-sorted ascending at load time (both molecular and per-q-point for crystals). Modes with `frequency=None` sort after all numeric frequencies. The `#` column in the mode selector displays the 1-indexed frequency-sorted position.
+Modes are frequency-sorted ascending at load time (both molecular and per-q-point for crystals). The `#` column in the mode selector displays the 1-indexed frequency-sorted position.
 
 ---
 
@@ -59,6 +59,12 @@ Each parser module exposes `parse(path: Path, ...) -> ParseResult`. Post-parse v
 | `native`  | `.h5`                     | Internal HDF5 format                      |
 | `orca`    | `*.hess`                  | Frequencies + mass-weighted normal modes  |
 | `phonopy` | `band.yaml` / `mesh.yaml` | Self-contained (lattice + atoms embedded) |
+
+### Storage layer
+
+In-place file mutations (e.g. label updates) live in `vibview.storage` rather than
+the parser layer. `parsers/native.py` handles file ↔ VibData conversion (parse &
+serialize); `storage.py` handles targeted in-place edits to previously dumped files.
 
 ### Native HDF5 schema
 
@@ -89,7 +95,7 @@ Crystal eigenvectors are stored as **float16** (half-precision IEEE 754) real/im
 | complex64  |  7.58 MB  |          0          | Baseline                        |
 | float16 ×2 |  3.76 MB  |       0.0004°       | 50% reduction, no visual impact |
 
-float16 precision (~0.001 for unit-vector components) is 100× beyond what is needed for pixel-level rendering on 2000 px displays. `Mode.__post_init__` normalizes using float64 arithmetic before downcasting to complex64 for internal use, so the on-disk format has no effect on computation precision.
+float16 precision (~0.001 for unit-vector components) is 100× beyond what is needed for pixel-level rendering on 2000 px displays. `Mode.__post_init__` normalizes in complex64 (numpy uses float64 internally) so the on-disk format has no effect on computation precision.
 
 ### Lazy loading
 

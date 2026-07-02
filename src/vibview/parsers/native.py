@@ -11,7 +11,7 @@ Schema
     │   └── positions       [dataset: (Nat, 3) float64]
     └── modes/
         ├── eigenvectors    [dataset: (Nb, Nat, 3) float64]
-        ├── frequencies     [dataset: (Nb,) float64]  NaN = absent
+        ├── frequencies     [dataset: (Nb,) float64]
         ├── labels          [dataset: (Nb,) UTF-8 string, optional]
         └── units           [attr on frequencies: string, optional]
 
@@ -45,19 +45,14 @@ def _decode_bytes(val: bytes | str) -> str:
 
 
 def _read_ev_slice(ds: h5py.Dataset, qi: int) -> np.ndarray:
-    """Read one q-point's eigenvectors, always returning complex64.
-
-    Handles both legacy (complex64) and current (float16 stacked) formats.
-    """
+    """Read one q-point's eigenvectors as complex64 from float16 stacked format."""
     raw = ds[qi]
-    if raw.dtype == np.complex64:
-        return raw
     return raw[..., 0].astype(np.float32) + 1j * raw[..., 1].astype(np.float32)
 
 
 def _read_modes_from_slice(
     ev_slice: np.ndarray,
-    freq_slice: np.ndarray | None,
+    freq_slice: np.ndarray,
     labels_ds: h5py.Dataset | None,
     qi: int | None,
 ) -> list[Mode]:
@@ -65,18 +60,21 @@ def _read_modes_from_slice(
 
     Args:
         ev_slice: Eigenvectors slice, shape ``(Nb, Nat, 3)``.
-        freq_slice: Frequencies slice, shape ``(Nb,)``, or None.
+        freq_slice: Frequencies slice, shape ``(Nb,)``.
         labels_ds: Labels dataset (1D or 2D), indexed by *qi* when given.
         qi: Q-point index for labels indexing; None for 1D labels.
+
+    Raises:
+        ValueError: If *freq_slice* contains NaN values.
     """
     n_bands = ev_slice.shape[0]
     modes: list[Mode] = []
     for bi in range(n_bands):
-        frequency = None
-        if freq_slice is not None:
-            v = float(freq_slice[bi])
-            if not np.isnan(v):
-                frequency = v
+        v = float(freq_slice[bi])
+        if np.isnan(v):
+            raise ValueError(
+                f"NaN frequency at band {bi}: /modes/frequencies must not contain NaN"
+            )
 
         label = None
         if labels_ds is not None:
@@ -85,13 +83,7 @@ def _read_modes_from_slice(
             if raw:
                 label = raw
 
-        modes.append(
-            Mode(
-                eigenvectors=ev_slice[bi].copy(),
-                frequency=frequency,
-                label=label,
-            )
-        )
+        modes.append(Mode(eigenvectors=ev_slice[bi].copy(), frequency=v, label=label))
     return modes
 
 
@@ -99,11 +91,9 @@ def _native_load_qpoint(source: Path, qi: int) -> list[Mode]:
     """Load a single q-point's modes from an HDF5 file."""
     with h5py.File(source, "r") as f:
         ev = _read_ev_slice(f["/modes/eigenvectors"], qi)
-        freq = f.get("/modes/frequencies")
+        freq = f["/modes/frequencies"]
         labels_ds = f.get("/modes/labels")
-        return _read_modes_from_slice(
-            ev, freq[qi] if freq is not None else None, labels_ds, qi
-        )
+        return _read_modes_from_slice(ev, freq[qi], labels_ds, qi)
 
 
 def parse(path: Path) -> ParseResult:
@@ -139,14 +129,20 @@ def parse(path: Path) -> ParseResult:
             raise ValueError(f"Missing /modes/eigenvectors dataset in {path}")
 
         ev_dataset = f["/modes/eigenvectors"]
-        freq_ds = f.get("/modes/frequencies")
+        if "/modes/frequencies" not in f:
+            raise ValueError(
+                f"File {path} is missing required dataset /modes/frequencies. "
+                "This file is not a valid vibview native format file."
+            )
+        freq_ds = f["/modes/frequencies"]
         labels_ds = f.get("/modes/labels")
 
-        frequency_units = None
-        if freq_ds is not None:
-            raw = freq_ds.attrs.get("units")
-            if raw is not None:
-                frequency_units = _decode_bytes(raw) if isinstance(raw, bytes) else raw
+        raw = freq_ds.attrs.get("units")
+        frequency_units = (
+            (_decode_bytes(raw) if isinstance(raw, bytes) else raw)
+            if raw is not None
+            else None
+        )
 
         lattice = None
         if "/lattice" in f:
@@ -161,7 +157,7 @@ def parse(path: Path) -> ParseResult:
             n_qpoints, n_bands, n_atoms, *_ = ev_dataset.shape
             modes = _read_modes_from_slice(
                 _read_ev_slice(ev_dataset, 0),
-                freq_ds[0] if freq_ds is not None else None,
+                freq_ds[0],
                 labels_ds,
                 qi=0,
             )
@@ -169,7 +165,7 @@ def parse(path: Path) -> ParseResult:
             n_bands, _, _ = ev_dataset.shape
             modes = _read_modes_from_slice(
                 ev_dataset[:],
-                freq_ds[:] if freq_ds is not None else None,
+                freq_ds[:],
                 labels_ds,
                 qi=None,
             )
@@ -194,7 +190,7 @@ def _write_hdf5_common(
     data: VibData,
     symbols: np.ndarray,
     positions: np.ndarray,
-    freq_ds: h5py.Dataset | None,
+    freq_ds: h5py.Dataset,
     frequency_units: str | None,
 ):
     """Write common HDF5 structure: atoms, lattice, and frequency units."""
@@ -205,7 +201,7 @@ def _write_hdf5_common(
     if data.lattice is not None:
         f.create_dataset("lattice", data=np.array(data.lattice, dtype=np.float64))
 
-    if freq_ds is not None and frequency_units:
+    if frequency_units:
         freq_ds.attrs["units"] = frequency_units
 
 
@@ -224,7 +220,7 @@ def _dump_crystal(
     n_atoms = len(data.atoms)
 
     all_ev = np.zeros((n_qpoints, n_bands, n_atoms, 3), dtype=np.complex64)
-    all_freq = np.full((n_qpoints, n_bands), np.nan, dtype=np.float64)
+    all_freq = np.zeros((n_qpoints, n_bands), dtype=np.float64)
     has_labels = False
     all_labels = np.full((n_qpoints, n_bands), "", dtype=h5py.string_dtype())
 
@@ -238,8 +234,7 @@ def _dump_crystal(
 
         for bi, m in enumerate(modes_qi):
             all_ev[qi, bi] = m.eigenvectors
-            if m.frequency is not None:
-                all_freq[qi, bi] = m.frequency
+            all_freq[qi, bi] = m.frequency
             if m.label:
                 has_labels = True
                 all_labels[qi, bi] = m.label
@@ -285,10 +280,7 @@ def _dump_molecular(
 ):
     """Serialize molecular (non-crystal) VibData to native HDF5 format."""
     eigenvectors = np.array([m.eigenvectors.real for m in data.modes], dtype=np.float16)
-    frequencies = np.array(
-        [m.frequency if m.frequency is not None else np.nan for m in data.modes],
-        dtype=np.float64,
-    )
+    frequencies = np.array([m.frequency for m in data.modes], dtype=np.float64)
 
     has_labels = any(m.label is not None for m in data.modes)
     labels = None
@@ -339,68 +331,3 @@ def dump(
         _dump_crystal(path, data, symbols, positions, fu, qpoint_loader, qpoint_index)
     else:
         _dump_molecular(path, data, symbols, positions, fu)
-
-
-def _read_labels(f: h5py.File, n_qpoints: int, n_modes: int) -> np.ndarray:
-    if "/modes/labels" in f:
-        raw = f["/modes/labels"][:]
-        dt = h5py.string_dtype()
-        if raw.dtype.kind in ("S", "O"):
-            return np.array([_decode_bytes(v) for v in raw.flat], dtype=dt).reshape(
-                raw.shape
-            )
-        return raw
-    return np.full((n_qpoints, n_modes), "", dtype=h5py.string_dtype())
-
-
-def _write_labels(f: h5py.File, data: np.ndarray) -> None:
-    if "/modes/labels" in f:
-        f["/modes/labels"][:] = data
-    else:
-        f.create_dataset("/modes/labels", data=data)
-
-
-def update_labels(
-    path: Path,
-    modes: list[Mode],
-    qpoint_index: int | None = None,
-) -> None:
-    """Update the /modes/labels dataset in-place in a native HDF5 file.
-
-    For crystal files, only the row corresponding to *qpoint_index* is
-    updated; all other q-points are preserved.
-
-    If all labels are empty strings, the dataset is deleted entirely.
-
-    Args:
-        path: Path to an existing native vibview HDF5 file.
-        modes: Current list of Mode objects whose ``.label`` values
-            will be written.
-        qpoint_index: Q-point index for crystal files; ``None`` for
-            molecular (non-periodic) files.
-
-    Raises:
-        OSError: File cannot be opened for writing.
-        KeyError: File is missing required HDF5 paths.
-    """
-    labels = np.array(
-        [m.label if m.label is not None else "" for m in modes],
-        dtype=h5py.string_dtype(),
-    )
-
-    with h5py.File(path, "r+") as f:
-        if qpoint_index is not None:
-            n_qpoints = f["/qpoints"].shape[0]
-            current = _read_labels(f, n_qpoints, len(modes))
-            current[qpoint_index] = labels
-            if np.all(current == ""):
-                if "/modes/labels" in f:
-                    del f["/modes/labels"]
-            else:
-                _write_labels(f, current)
-        else:
-            has_labels = not np.all(labels == "")
-            if has_labels:
-                _write_labels(f, labels)
-            elif "/modes/labels" in f:
-                del f["/modes/labels"]

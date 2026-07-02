@@ -264,7 +264,7 @@ class TestFromFile:
                 "eigenvectors",
                 data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
             )
-            g.create_dataset("frequencies", data=np.array([np.nan], dtype=np.float64))
+            g.create_dataset("frequencies", data=np.array([100.0], dtype=np.float64))
         structure = Structure(parse_file(p, "native").data)
         assert len(structure.atoms) == 1
         assert structure.atoms[0].symbol == "H"

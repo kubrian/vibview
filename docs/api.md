@@ -24,6 +24,10 @@
 
 ::: vibview.parsers.native
 
+## Storage
+
+::: vibview.storage
+
 ## Renderers
 
 ::: vibview.renderers.vispy_renderer
