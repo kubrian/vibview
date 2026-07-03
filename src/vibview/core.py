@@ -54,16 +54,15 @@ class Structure:
 
         Returns:
             List of (i, j, distance) tuples for each detected bond.
-
-        Raises:
-            KeyError: If an atom symbol is not in the element database.
         """
         bonds: list[tuple[int, int, float]] = []
         n = len(self.atoms)
         for i in range(n):
             for j in range(i + 1, n):
-                r1 = config.elements[self.atoms[i].symbol].radius
-                r2 = config.elements[self.atoms[j].symbol].radius
+                el1 = config.elements.get(self.atoms[i].symbol)
+                r1 = el1.radius if el1 is not None else config.rendering.atom_radius
+                el2 = config.elements.get(self.atoms[j].symbol)
+                r2 = el2.radius if el2 is not None else config.rendering.atom_radius
                 cutoff = r1 + r2 + tolerance
                 d = np.linalg.norm(self.xyz[i] - self.xyz[j])
                 if d < cutoff:

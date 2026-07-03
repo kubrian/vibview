@@ -3,47 +3,15 @@
 import h5py
 import numpy as np
 
-from tests.conftest import _make_crystal_h5
+from tests.conftest import _make_crystal_h5, _make_molecular_h5
 from vibview.models import Mode
 from vibview.storage import update_labels
-
-
-def _make_h5(path, **overrides):
-    n_atoms = overrides.get("n_atoms", 1)
-    n_modes = overrides.get("n_modes", 1)
-    ev = overrides.get(
-        "eigenvectors",
-        np.zeros((n_modes, n_atoms, 3), dtype=np.float16),
-    )
-    freq = overrides.get(
-        "frequencies",
-        np.zeros(n_modes, dtype=np.float64),
-    )
-    symbols = overrides.get(
-        "symbols",
-        np.array(["H"] * n_atoms, dtype=h5py.string_dtype()),
-    )
-    positions = overrides.get(
-        "positions",
-        np.zeros((n_atoms, 3), dtype=np.float64),
-    )
-
-    with h5py.File(path, "w") as f:
-        g = f.create_group("atoms")
-        g.create_dataset("symbols", data=symbols)
-        g.create_dataset("positions", data=positions)
-        g = f.create_group("modes")
-        g.create_dataset("eigenvectors", data=ev)
-        g.create_dataset("frequencies", data=freq)
-        g["frequencies"].attrs["units"] = "cm⁻¹"
-        if overrides.get("labels") is not None:
-            g.create_dataset("labels", data=overrides["labels"])
 
 
 class TestUpdateLabels:
     def test_update_labels_molecular_writes_dataset(self, tmp_path):
         p = tmp_path / "mol.h5"
-        _make_h5(p, n_atoms=1, n_modes=2)
+        _make_molecular_h5(p, n_atoms=1, n_modes=2)
         modes = [
             Mode([[1.0, 0.0, 0.0]], frequency=0.0, label="a"),
             Mode([[0.0, 1.0, 0.0]], frequency=0.0),
@@ -55,7 +23,7 @@ class TestUpdateLabels:
 
     def test_update_labels_molecular_deletes_when_all_empty(self, tmp_path):
         p = tmp_path / "mol.h5"
-        _make_h5(
+        _make_molecular_h5(
             p,
             n_atoms=1,
             n_modes=2,
@@ -73,7 +41,7 @@ class TestUpdateLabels:
         self, tmp_path
     ):
         p = tmp_path / "mol.h5"
-        _make_h5(p, n_atoms=1, n_modes=2)
+        _make_molecular_h5(p, n_atoms=1, n_modes=2)
         modes = [
             Mode([[1.0, 0.0, 0.0]], frequency=0.0),
             Mode([[0.0, 1.0, 0.0]], frequency=0.0),

@@ -76,6 +76,39 @@ def _make_crystal_h5(path, n_qpoints=2, n_bands=2, n_atoms=2, labels=None):
         f.create_dataset("qpoints", data=qpoints)
 
 
+def _make_molecular_h5(path, **overrides):
+    """Write a minimal molecular HDF5 file (no q-points)."""
+    n_atoms = overrides.get("n_atoms", 1)
+    n_modes = overrides.get("n_modes", 1)
+    ev = overrides.get(
+        "eigenvectors",
+        np.zeros((n_modes, n_atoms, 3), dtype=np.float16),
+    )
+    freq = overrides.get(
+        "frequencies",
+        np.zeros(n_modes, dtype=np.float64),
+    )
+    symbols = overrides.get(
+        "symbols",
+        np.array(["H"] * n_atoms, dtype=h5py.string_dtype()),
+    )
+    positions = overrides.get(
+        "positions",
+        np.zeros((n_atoms, 3), dtype=np.float64),
+    )
+
+    with h5py.File(path, "w") as f:
+        g = f.create_group("atoms")
+        g.create_dataset("symbols", data=symbols)
+        g.create_dataset("positions", data=positions)
+        g = f.create_group("modes")
+        g.create_dataset("eigenvectors", data=ev)
+        g.create_dataset("frequencies", data=freq)
+        g["frequencies"].attrs["units"] = "cm⁻¹"
+        if overrides.get("labels") is not None:
+            g.create_dataset("labels", data=overrides["labels"])
+
+
 class _MockMesh:
     """Mock Mesh that quacks like vispy Mesh without Node parent validation."""
 

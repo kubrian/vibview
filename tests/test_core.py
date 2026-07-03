@@ -40,21 +40,21 @@ class TestGetMode:
 class TestDetectBonds:
     _cfg = Config.defaults()
 
-    def test_unknown_element_raises_key_error(self):
-        atoms = [Atom("Xx", [0.0, 0.0, 0.0]), Atom("Xx", [0.0, 0.0, 1.5])]
+    def test_unknown_element_uses_fallback_radius(self):
+        atoms = [Atom("Xx", [0.0, 0.0, 0.0]), Atom("Xx", [0.0, 0.0, 0.8])]
         structure = _make_structure(
             atoms, [Mode([[1, 0, 0], [-1, 0, 0]], frequency=0.0)]
         )
-        with pytest.raises(KeyError, match="Xx"):
-            structure.detect_bonds(tolerance=0.4, config=self._cfg)
+        bonds = structure.detect_bonds(tolerance=0.4, config=self._cfg)
+        assert len(bonds) == 1
 
-    def test_mixed_known_unknown_elements_raises_key_error(self):
-        atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("Xx", [0.0, 0.0, 1.5])]
+    def test_mixed_known_unknown_elements_uses_fallback(self):
+        atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("Xx", [0.0, 0.0, 0.8])]
         structure = _make_structure(
             atoms, [Mode([[1, 0, 0], [-1, 0, 0]], frequency=0.0)]
         )
-        with pytest.raises(KeyError, match="Xx"):
-            structure.detect_bonds(tolerance=0.4, config=self._cfg)
+        bonds = structure.detect_bonds(tolerance=0.4, config=self._cfg)
+        assert len(bonds) == 1
 
     def test_bond_detected_known_structure(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
