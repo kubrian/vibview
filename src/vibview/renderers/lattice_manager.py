@@ -1,7 +1,6 @@
 """Manages the unit-cell lattice box visual."""
 
 import numpy as np
-from vispy.color import Color
 
 from vibview.renderers._geometry import build_cylinder_mesh
 
@@ -33,8 +32,7 @@ class LatticeManager:
         nx, ny, nz = supercell if supercell is not None else (1, 1, 1)
 
         cfg = self.config.lattice
-        rgba = Color(cfg.color)
-        lattice_color = (*rgba.rgb, cfg.alpha)
+        lattice_color = (*cfg.color.rgb, cfg.alpha)
 
         segments = []
         for i in range(nx + 1):

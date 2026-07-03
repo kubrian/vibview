@@ -36,7 +36,7 @@ class CameraController:
         self.canvas = scene.SceneCanvas(
             show=False,
             title="VibView",
-            bgcolor=config.rendering.background_color,
+            bgcolor=config.rendering.background_color.rgba,
             size=tuple(config.camera.default_window_size),
         )
         self.view = self.canvas.central_widget.add_view()
@@ -177,7 +177,7 @@ class CameraController:
             label = visuals.Text(
                 label_text,
                 pos=tip,
-                color=c,
+                color=c.rgba,
                 font_size=self._axis_cfg.label_font_size,
                 parent=parent,
                 anchor_x="center",
@@ -190,7 +190,7 @@ class CameraController:
                 origin,
                 d,
                 length=length,
-                color=c,
+                color=c.rgba,
                 radius=radius,
                 parent=parent,
             )

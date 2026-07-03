@@ -4,6 +4,7 @@ import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHeaderView
 
+from vibview.config import Color
 from vibview.models import Mode
 from vibview.renderers.qt_window import ModeSelectorPanel
 
@@ -15,7 +16,7 @@ def _make_panel(modes, **kwargs):
         initial_amplitudes=None,
         initial_period=1.0,
         frequency_units="?",
-        imaginary_color="#ff4444",
+        imaginary_color=Color.from_hex("#ff4444"),
         qpoints=None,
         initial_qpoint=0,
         initial_supercell=(1, 1, 1),
@@ -230,7 +231,7 @@ class TestModeSelectorPanel:
             Mode([[0.0, 0.0, 1.0]], frequency=-500.0),
             Mode([[1.0, 0.0, 0.0]], frequency=500.0),
         ]
-        p = self.Panel(modes, imaginary_color="#ff4444")
+        p = self.Panel(modes, imaginary_color=Color.from_hex("#ff4444"))
         for col in range(3):
             item = p.table.item(row_idx, col)
             assert item is not None
@@ -245,7 +246,7 @@ class TestModeSelectorPanel:
             Mode([[1.0, 0.0, 0.0]], frequency=500.0),
             Mode([[0.0, 0.0, 0.0]], frequency=-200.0),
         ]
-        p = self.Panel(modes, imaginary_color="#ff4444")
+        p = self.Panel(modes, imaginary_color=Color.from_hex("#ff4444"))
         p.table.horizontalHeader().sectionClicked.emit(1)
         for row in range(p.table.rowCount()):
             pos = p.table.item(row, 0).data(Qt.ItemDataRole.UserRole)

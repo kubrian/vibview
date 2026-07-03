@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import QSplitter, QWidget
 
+from vibview.config import Color
 from vibview.models import Mode
 from vibview.renderers.qt_window import ModeSelectorPanel, VibviewWindow
 
@@ -18,7 +19,7 @@ def _make_window(canvas, modes, **kwargs):
         initial_amplitudes=None,
         initial_period=1.0,
         frequency_units="?",
-        imaginary_color="#ff4444",
+        imaginary_color=Color.from_hex("#ff4444"),
         qpoints=None,
         initial_qpoint=0,
         initial_supercell=(1, 1, 1),

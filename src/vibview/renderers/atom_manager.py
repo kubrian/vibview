@@ -2,7 +2,6 @@
 
 import numpy as np
 from vispy import scene
-from vispy.color import Color
 from vispy.geometry import MeshData, create_sphere
 from vispy.scene import visuals
 
@@ -33,7 +32,7 @@ class AtomManager:
             parent=self.view_scene,
             method="ico",
             subdivisions=cfg.subdivisions,
-            color=color,
+            color=color.rgba,
             shading=cfg.effective_shading,
         )
         if self.camera:
@@ -56,8 +55,7 @@ class AtomManager:
         basis_radii_f32 = basis_radii.astype(np.float32)
         basis_colors_rgba = np.empty((n_basis, 4), dtype=np.float32)
         for ai, c in enumerate(basis_colors):
-            rgba = Color(c).rgba
-            basis_colors_rgba[ai] = rgba
+            basis_colors_rgba[ai] = c.rgba
 
         n_total = len(eq_xyz)
         if is_supercell:

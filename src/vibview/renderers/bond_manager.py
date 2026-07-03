@@ -34,7 +34,7 @@ class BondManager:
         tube = visuals.Tube(
             points=np.array([[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]]),
             radius=cfg.bond_radius,
-            color=cfg.bond_color,
+            color=cfg.bond_color.rgba,
             parent=self.view_scene,
             shading=cfg.effective_shading,
         )
@@ -73,7 +73,7 @@ class BondManager:
         mesh = build_cylinder_mesh(
             segments,
             bond_radius,
-            cfg.bond_color,
+            cfg.bond_color.rgba,
             parent,
             shading=cfg.effective_shading,
             cols=cols,

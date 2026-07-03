@@ -205,7 +205,7 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure, str | 
     return config, structure, result.source
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Entry point for the vibview CLI.
 
     Parses CLI arguments, loads configuration, builds the structure,
@@ -217,6 +217,8 @@ def main(argv: list[str]) -> int:
     Returns:
         Exit code (0 on success, 1 on error).
     """
+    if argv is None:
+        argv = sys.argv[1:]
     parser = create_parser()
     args = parser.parse_args(argv)
 
@@ -274,4 +276,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())

@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from vispy.color import Color
 
 from tests.conftest import _make_structure, _make_structure_with_lattice, _make_viewer
 from vibview.config import Config
@@ -35,7 +34,7 @@ class TestVispyViewerStaticMode:
             assert kwargs.get("radius") == pytest.approx(
                 0.66 * cfg.rendering.radii_scale
             )
-            assert kwargs.get("color") == "#ff0d0d"
+            assert kwargs.get("color") == pytest.approx(cfg.elements["O"].color.rgba)
             assert kwargs.get("method") == "ico"
             assert kwargs.get("subdivisions") == 2
             assert kwargs.get("shading") == cfg.rendering.effective_shading
@@ -164,7 +163,7 @@ class TestBonds:
             tube_call[1]["points"], [[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]]
         )
         assert tube_call[1]["radius"] == cfg.rendering.bond_radius
-        assert tube_call[1]["color"] == cfg.rendering.bond_color
+        assert tube_call[1]["color"] == pytest.approx(cfg.rendering.bond_color.rgba)
         assert tube_call[1].get("shading") == cfg.rendering.effective_shading
 
 
@@ -235,10 +234,10 @@ class TestDiffMode:
         VispyViewer(oo_structure, config=cfg, mode_type="overlay")
         wireframe_calls = self._get_wireframe_tube_calls(n_bonds=1)
         assert wireframe_calls[0][1]["color"][:3] == pytest.approx(
-            Color(cfg.overlay.eq_color).rgb
+            cfg.overlay.eq_color.rgb
         )
         assert wireframe_calls[1][1]["color"][:3] == pytest.approx(
-            Color(cfg.overlay.disp_color).rgb
+            cfg.overlay.disp_color.rgb
         )
 
     def test_wireframe_multiple_bonds(self):
@@ -311,7 +310,7 @@ class TestDiffMode:
 class TestUnknownElementInRenderer:
     """Visuals built for atoms with unknown element symbols."""
 
-    def test_unknown_element_raises_key_error(self):
+    def test_unknown_element_uses_fallback(self):
         atoms = [Atom("Xx", [0.0, 0.0, 0.0])]
         structure = _make_structure(
             atoms,
@@ -323,8 +322,14 @@ class TestUnknownElementInRenderer:
             ],
         )
         cfg = Config.defaults()
-        with pytest.raises(KeyError, match="Xx"):
-            VispyViewer(structure, config=cfg, mode_type="static")
+        VispyViewer(structure, config=cfg, mode_type="static")
+        sphere_calls = self.mock_sphere.call_args_list
+        assert sphere_calls[0][1]["color"] == pytest.approx(
+            cfg.rendering.atom_color.rgba
+        )
+        assert sphere_calls[0][1]["radius"] == pytest.approx(
+            cfg.rendering.atom_radius * cfg.rendering.radii_scale
+        )
 
 
 class TestBondTransforms:

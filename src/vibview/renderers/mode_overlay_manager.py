@@ -1,7 +1,6 @@
 """Manages mode-specific overlay visuals (arrows, wireframes)."""
 
 import numpy as np
-from vispy.color import Color
 from vispy.scene import visuals
 
 from vibview.core import generate_frames
@@ -82,7 +81,7 @@ class ModeOverlayManager:
                 shaft_radius,
                 tip_radius,
                 tip_length,
-                scfg.arrow_color,
+                scfg.arrow_color.rgba,
                 self.view_scene,
                 shading=cfg.effective_shading,
                 cone_offset=0.0,
@@ -110,8 +109,7 @@ class ModeOverlayManager:
         cfg = self.config.overlay
         br = self.config.rendering.bond_radius
 
-        eq_c = Color(cfg.eq_color)
-        eq_rgba = (*eq_c.rgb, cfg.eq_alpha)
+        eq_rgba = (*cfg.eq_color.rgb, cfg.eq_alpha)
         for i, j in bond_indices:
             tube = visuals.Tube(
                 points=np.array([eq_xyz[i], eq_xyz[j]]),
@@ -123,8 +121,7 @@ class ModeOverlayManager:
             tube.set_gl_state(preset="translucent", depth_test=False)
             self.visuals.append(tube)
 
-        dc = Color(cfg.disp_color)
-        disp_rgba = (*dc.rgb, cfg.disp_alpha)
+        disp_rgba = (*cfg.disp_color.rgb, cfg.disp_alpha)
         for i, j in bond_indices:
             tube = visuals.Tube(
                 points=np.array([displaced_xyz[i], displaced_xyz[j]]),

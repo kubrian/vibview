@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vibview.config import Config, RenderingConfig, _deep_merge, _load_defaults
+from vibview.config import Color, Config, RenderingConfig, _deep_merge
 
 
 class TestDeepMerge:
@@ -39,7 +39,7 @@ class TestLoadConfig:
         with patch("vibview.config.USER_CONFIG_PATH") as mock_path:
             mock_path.exists.return_value = False
             cfg = Config.load(None)
-        assert cfg.rendering.background_color == "#1e1e24"
+        assert cfg.rendering.background_color == Color.from_hex("#1e1e24")
         assert cfg.animation.fps == 30
 
     def test_session_overrides(self, tmp_path):
@@ -54,7 +54,7 @@ class TestLoadConfig:
             mock_path.exists.return_value = False
             cfg = Config.load(session_file)
         assert cfg.animation.default_amplitude == 0.8
-        assert cfg.rendering.background_color == "#000000"
+        assert cfg.rendering.background_color == Color.from_hex("#000000")
         assert cfg.animation.fps == 30
 
     def test_session_quality_override(self, tmp_path):
@@ -84,9 +84,9 @@ class TestLoadConfig:
         assert cfg.rendering.effective_shading == "smooth"
 
     def test_invalid_shading_raises(self):
-        defaults = _load_defaults()
+        cfg = Config.defaults()
         with pytest.raises(ValueError, match="shading"):
-            RenderingConfig(**{**defaults["rendering"], "shading": "shiny"})
+            RenderingConfig(**{**cfg.rendering.__dict__, "shading": "shiny"})
 
     def test_session_config_overrides_defaults(self, tmp_path):
         session_file = tmp_path / "session.yaml"
@@ -94,8 +94,8 @@ class TestLoadConfig:
         with patch("vibview.config.USER_CONFIG_PATH") as mock_path:
             mock_path.exists.return_value = False
             cfg = Config.load(session_file)
-        assert cfg.rendering.atom_color == "#00ff00"
-        assert cfg.rendering.background_color == "#1e1e24"
+        assert cfg.rendering.atom_color == Color.from_hex("#00ff00")
+        assert cfg.rendering.background_color == Color.from_hex("#1e1e24")
 
     def test_session_config_nonexistent(self):
         with patch("vibview.config.USER_CONFIG_PATH") as mock_path:
@@ -118,5 +118,5 @@ class TestLoadConfig:
         with patch("vibview.config.USER_CONFIG_PATH", user_file):
             cfg = Config.load(session_file)
 
-        assert cfg.rendering.background_color == "#111111"
-        assert cfg.rendering.atom_color == "#222222"
+        assert cfg.rendering.background_color == Color.from_hex("#111111")
+        assert cfg.rendering.atom_color == Color.from_hex("#222222")

@@ -352,7 +352,7 @@ class ModeSelectorPanel(QWidget):
                 label_item.setFlags(label_item.flags() | Qt.ItemFlag.ItemIsEditable)
             self.table.setItem(row, 2, label_item)
 
-        imag_color = QColor(self._imaginary_color)
+        imag_color = QColor.fromRgbF(*self._imaginary_color.rgba)
         for row, (pos, m) in enumerate(indexed_modes):
             if m.frequency < 0:
                 for col in range(3):
