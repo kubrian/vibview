@@ -1,31 +1,27 @@
-"""Parser registry and dispatch.
+"""Parser format names and dispatch.
 
 Usage:
     from vibview.parsers import parse
-    data = parse(path, format="native")
+    data = parse(path, format="native", qpoint_index=0)
 """
 
 from collections.abc import Callable
-from functools import partial
 from pathlib import Path
 
 from vibview.models import Mode, ParseResult
 
 from . import native, orca, phonopy
 
-PARSERS: dict[str, Callable[..., ParseResult]] = {
-    "native": native.parse,
-    "orca": orca.parse,
-    "phonopy": partial(phonopy.parse, qpoint_index=0),
-}
+PARSER_NAMES = ["native", "orca", "phonopy"]
 
 
-def parse(path: Path, format: str) -> ParseResult:
+def parse(path: Path, format: str, qpoint_index: int) -> ParseResult:
     """Parse a file using the named format parser.
 
     Args:
         path: Path to the input file.
         format: Parser format name (e.g. "native", "orca").
+        qpoint_index: Q-point index for periodic structures.
 
     Returns:
         A ParseResult containing the validated VibData.
@@ -33,10 +29,15 @@ def parse(path: Path, format: str) -> ParseResult:
     Raises:
         ValueError: If the format is not recognised.
     """
-    if format not in PARSERS:
-        available = ", ".join(sorted(PARSERS))
+    if format == "native":
+        return native.parse(path, qpoint_index)
+    elif format == "orca":
+        return orca.parse(path)
+    elif format == "phonopy":
+        return phonopy.parse(path, qpoint_index)
+    else:
+        available = ", ".join(sorted(PARSER_NAMES))
         raise ValueError(f"Unknown format: {format!r}. Available formats: {available}")
-    return PARSERS[format](path)
 
 
 def make_qpoint_loader(result: ParseResult) -> Callable[[int], list[Mode]] | None:

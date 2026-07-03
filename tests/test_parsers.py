@@ -4,9 +4,15 @@ import h5py
 import numpy as np
 import pytest
 
+from tests.conftest import _make_crystal_h5
 from vibview.models import Atom, Mode, VibData
 from vibview.parsers import make_qpoint_loader
-from vibview.parsers.native import dump, parse
+from vibview.parsers.native import dump
+from vibview.parsers.native import parse as _native_parse
+
+
+def parse(p):
+    return _native_parse(p, 0)
 
 
 def _make_h5(path, **overrides):
@@ -173,9 +179,10 @@ class TestDump:
                     frequency=1550.0,
                 )
             ],
+            frequency_units="?",
         )
         out = tmp_path / "roundtrip.h5"
-        dump(data, out)
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         result = parse(out)
         data = result.data
         assert len(data.atoms) == 2
@@ -193,9 +200,10 @@ class TestDump:
                     label="stretch",
                 )
             ],
+            frequency_units="?",
         )
         out = tmp_path / "labeled.h5"
-        dump(data, out)
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         result = parse(out)
         assert result.data.modes[0].frequency == 100.0
         assert result.data.modes[0].label == "stretch"
@@ -203,10 +211,11 @@ class TestDump:
     def test_dump_omits_labels_dataset_when_all_none(self, tmp_path):
         data = VibData(
             atoms=[Atom("H", [0.0, 0.0, 0.0])],
-            modes=[Mode([[1.0, 0.0, 0.0]])],
+            modes=[Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
+            frequency_units="?",
         )
         out = tmp_path / "minimal.h5"
-        dump(data, out)
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         with h5py.File(out, "r") as f:
             assert "labels" not in f["/modes"]
 
@@ -218,9 +227,10 @@ class TestDump:
                 Mode([[0.0, 1.0, 0.0]], frequency=200.0),
                 Mode([[0.0, 0.0, 1.0]], frequency=0.0),
             ],
+            frequency_units="?",
         )
         out = tmp_path / "multi.h5"
-        dump(data, out)
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         result = parse(out)
         data = result.data
         assert len(data.modes) == 3
@@ -238,7 +248,7 @@ class TestDump:
             frequency_units="cm⁻¹",
         )
         out = tmp_path / "units.h5"
-        dump(data, out)
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         result = parse(out)
         assert result.data.frequency_units == "cm⁻¹"
         with h5py.File(out, "r") as f:
@@ -248,9 +258,10 @@ class TestDump:
         data = VibData(
             atoms=[Atom("H", [0.0, 0.0, 0.0])],
             modes=[Mode([[1.0, 0.0, 0.0]], frequency=100.0)],
+            frequency_units="THz",
         )
         out = tmp_path / "units_override.h5"
-        dump(data, out, frequency_units="THz")
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         result = parse(out)
         assert result.data.frequency_units == "THz"
 
@@ -258,40 +269,12 @@ class TestDump:
         data = VibData(
             atoms=[Atom("H", [0.0, 0.0, 0.0])],
             modes=[Mode([[1.0, 0.0, 0.0]], frequency=100.0)],
+            frequency_units="?",
         )
         out = tmp_path / "no_units.h5"
-        dump(data, out)
+        dump(data, out, qpoint_loader=None, qpoint_index=0)
         with h5py.File(out, "r") as f:
-            assert "units" not in f["/modes/frequencies"].attrs
-
-
-def _make_crystal_h5(path, n_qpoints=2, n_bands=2, n_atoms=2, labels=None):
-    ev = np.zeros((n_qpoints, n_bands, n_atoms, 3, 2), dtype=np.float16)
-    for qi in range(n_qpoints):
-        for bi in range(n_bands):
-            ev[qi, bi, 0, 0, 0] = float(qi * n_bands + bi + 1)
-    freq = np.zeros((n_qpoints, n_bands), dtype=np.float64)
-    freq[0, 0] = 100.0
-    freq[1, 1] = 200.0
-    qpoints = np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], dtype=np.float64)
-    lattice = np.array(
-        [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]], dtype=np.float64
-    )
-    symbols = np.array(["O", "H"] * (n_atoms // 2) + ["O"], dtype=h5py.string_dtype())[
-        :n_atoms
-    ]
-    positions = np.zeros((n_atoms, 3), dtype=np.float64)
-    with h5py.File(path, "w") as f:
-        g = f.create_group("atoms")
-        g.create_dataset("symbols", data=symbols)
-        g.create_dataset("positions", data=positions)
-        g = f.create_group("modes")
-        g.create_dataset("eigenvectors", data=ev)
-        g.create_dataset("frequencies", data=freq)
-        if labels is not None:
-            g.create_dataset("labels", data=labels)
-        f.create_dataset("lattice", data=lattice)
-        f.create_dataset("qpoints", data=qpoints)
+            assert f["/modes/frequencies"].attrs["units"] == "?"
 
 
 class TestCrystalParse:
@@ -396,9 +379,10 @@ class TestCrystalDump:
             modes=data_modes,
             qpoints=qpoints,
             lattice=[[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]],
+            frequency_units="?",
         )
         out = tmp_path / "crystal_out.h5"
-        dump(data, out, qpoint_loader=lazy_loader)
+        dump(data, out, qpoint_loader=lazy_loader, qpoint_index=0)
         result = parse(out)
         assert len(result.data.qpoints) == n_qpoints
         loader = result.qpoint_loader
@@ -411,13 +395,14 @@ class TestCrystalDump:
     def test_dump_crystal_incomplete_raises(self, tmp_path):
         data = VibData(
             atoms=[Atom("H", [0.0, 0.0, 0.0])],
-            modes=[Mode([[1.0, 0.0, 0.0]])],
+            modes=[Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
             qpoints=[[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]],
             lattice=[[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]],
+            frequency_units="?",
         )
         out = tmp_path / "incomplete.h5"
         with pytest.raises(ValueError, match="Cannot access q-point 1"):
-            dump(data, out)
+            dump(data, out, qpoint_loader=None, qpoint_index=0)
 
     def test_dump_crystal_roundtrip_frequency_units(self, tmp_path):
         data = VibData(
@@ -434,6 +419,7 @@ class TestCrystalDump:
             qpoint_loader=lambda qi: [
                 Mode([[1.0, 0.0, 0.0]], frequency=100.0 * (qi + 1))
             ],
+            qpoint_index=0,
         )
         result = parse(out)
         assert result.data.frequency_units == "THz"

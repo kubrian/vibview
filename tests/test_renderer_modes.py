@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.conftest import _make_structure
+from tests.conftest import _make_structure, _make_viewer
 from vibview.config import Config
 from vibview.models import Atom, Mode
 from vibview.renderers.vispy_renderer import VispyViewer
@@ -16,8 +16,8 @@ class TestSwitchMode:
     def test_reuses_spheres(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]], frequency=0.0),
         ]
         structure = _make_structure(atoms, modes)
         cfg = Config.defaults()
@@ -42,8 +42,8 @@ class TestSwitchMode:
     def test_restarts_timer_in_vibration_mode(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]], frequency=0.0),
         ]
         structure = _make_structure(atoms, modes)
         cfg = Config.defaults()
@@ -57,7 +57,7 @@ class TestSwitchMode:
     def test_reuses_bond_transforms(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0),
             Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]], frequency=500.0, label="test"),
         ]
         structure = _make_structure(atoms, modes)
@@ -74,25 +74,24 @@ class TestSwitchMode:
 class TestAmplitudePeriodChanges:
     """Tests for amplitude and period changes via switch_mode."""
 
-    def _make_viewer(self, mode_type="animate"):
-        return VispyViewer(
+    def _viewer(self, mode_type="animate"):
+        return _make_viewer(
             _make_structure(
                 [Atom("H", [0.0, 0.0, 0.0])],
-                [Mode([[1.0, 0.0, 0.0]])],
+                [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
             ),
-            config=Config.defaults(),
             mode_type=mode_type,
         )
 
     def test_amplitude_applied_in_vibration_via_switch_mode(self):
-        viewer = self._make_viewer("animate")
+        viewer = self._viewer("animate")
         viewer.amplitude = 0.5
         viewer.switch_mode(0)
         assert viewer.amplitude == 0.5
         assert hasattr(viewer.animation, "frames")
 
     def test_amplitude_applied_in_static_via_switch_mode(self):
-        viewer = self._make_viewer("static")
+        viewer = self._viewer("static")
         n_arrows_before = len(viewer.scene.overlay.visuals)
         viewer.amplitude = 0.5
         viewer.switch_mode(0)
@@ -100,14 +99,14 @@ class TestAmplitudePeriodChanges:
         assert len(viewer.scene.overlay.visuals) == n_arrows_before
 
     def test_period_applied_in_vibration_via_switch_mode(self):
-        viewer = self._make_viewer("animate")
+        viewer = self._viewer("animate")
         viewer.period = 2.0
         viewer.switch_mode(0)
         assert viewer.period == 2.0
         assert hasattr(viewer.animation, "frames")
 
     def test_period_set_in_static_mode(self):
-        viewer = self._make_viewer("static")
+        viewer = self._viewer("static")
         viewer.period = 2.0
         viewer.switch_mode(0)
         assert viewer.period == 2.0
@@ -119,11 +118,11 @@ class TestSwitchModeDirect:
     def test_switch_mode_updates_index(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         modes = [
-            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]]),
-            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0),
+            Mode([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]], frequency=0.0),
         ]
         structure = _make_structure(atoms, modes)
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
 
         viewer.switch_mode(1)
         assert viewer.mode_index == 1

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from vibview.config import USER_CONFIG_PATH, Config
 from vibview.core import Structure
-from vibview.parsers import PARSERS, make_qpoint_loader
+from vibview.parsers import PARSER_NAMES, make_qpoint_loader
 from vibview.parsers import parse as parse_file
 from vibview.parsers.native import dump as dump_native
 from vibview.renderers.vispy_renderer import VispyViewer
@@ -27,7 +27,7 @@ def _add_input_args(parser: argparse.ArgumentParser) -> None:
         "type",
         nargs="?",
         default="native",
-        choices=sorted(PARSERS),
+        choices=sorted(PARSER_NAMES),
         help="Input file format (default: native)",
     )
 
@@ -161,7 +161,7 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure, str | 
             if the format is unsupported, if exporting a non-native
             file, or if --example is set to an unknown name.
     """
-    config = Config.load(session_config=args.config)
+    config = Config.load(args.config)
 
     if args.example and args.file is not None:
         raise ValueError("--example and input file are mutually exclusive")
@@ -181,7 +181,7 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure, str | 
         file = args.file
         file_type = args.type
 
-    result = parse_file(file, file_type)
+    result = parse_file(file, file_type, args.qpoint)
 
     if args.command == "view" and file_type != "native":
         print(
@@ -205,7 +205,7 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure, str | 
     return config, structure, result.source
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str]) -> int:
     """Entry point for the vibview CLI.
 
     Parses CLI arguments, loads configuration, builds the structure,
@@ -238,6 +238,7 @@ def main(argv: list[str] | None = None) -> int:
             mode_type=config.animation.default_mode,
             mode_index=args.mode,
             qpoint_index=args.qpoint,
+            create_window=True,
             supercell=supercell,
             source_path=source_path,
         )
@@ -254,13 +255,17 @@ def main(argv: list[str] | None = None) -> int:
             supercell=supercell,
             source_path=source_path,
         )
-        viewer.export_animation(format=args.format, name=args.name)
+        viewer.export_animation(
+            format=args.format,
+            name=args.name,
+            cycles=config.export.cycles,
+            progress_callback=None,
+        )
 
     elif args.command == "convert":
         dump_native(
             structure.data,
             args.output,
-            frequency_units=config.display.frequency_units,
             qpoint_loader=structure.qpoint_loader,
             qpoint_index=structure.qpoint_index,
         )
@@ -269,4 +274,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

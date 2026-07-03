@@ -48,9 +48,6 @@ class SceneBuilder:
             return self._supercell_xyz
         return self.structure.xyz
 
-    def _compute_basis_properties(self):
-        return get_basis_properties(self.structure, self.config)
-
     def ensure_supercell(self):
         sc = self.supercell
         if sc is None or sc == (1, 1, 1):
@@ -82,7 +79,7 @@ class SceneBuilder:
         n_basis = len(self.structure.atoms)
         n_cells = expanded.shape[0] // n_basis
 
-        basis_radii, _ = self._compute_basis_properties()
+        basis_radii, _ = get_basis_properties(self.structure, self.config)
 
         basis_pos = np.asarray(self.structure.xyz, dtype=np.float64)
         d2 = np.sum(
@@ -118,7 +115,7 @@ class SceneBuilder:
         self.clear_all_visuals()
         self.ensure_supercell()
 
-        basis_radii, basis_colors = self._compute_basis_properties()
+        basis_radii, basis_colors = get_basis_properties(self.structure, self.config)
         n_basis = len(basis_radii)
 
         if self.is_supercell:
@@ -142,7 +139,7 @@ class SceneBuilder:
             self.bonds.indices = [(i, j) for i, j, _ in bond_pairs]
 
         for _ in self.bonds.indices:
-            self.bonds.add_placeholder()
+            self.bonds.add_bond()
 
         self.lattice.build(self.structure.data.lattice, self.supercell)
 

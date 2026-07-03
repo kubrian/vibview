@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from vibview.config import Config
+from tests.conftest import _export, _make_viewer
 from vibview.core import Structure
 from vibview.parsers import make_qpoint_loader
 from vibview.parsers import parse as parse_file
@@ -24,14 +24,11 @@ class TestViewerFromExample:
 
     def test_viewer_creates_correct_scene(self):
         file = resource_files("vibview.examples").joinpath("water.h5")
-        result = parse_file(file, "native")
+        result = parse_file(file, "native", qpoint_index=0)
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
 
-        from vibview.renderers.vispy_renderer import VispyViewer
-
-        viewer = VispyViewer(
+        viewer = _make_viewer(
             structure,
-            config=Config.defaults(),
             mode_type="animate",
             create_window=False,
         )
@@ -55,14 +52,11 @@ class TestExportFromExample:
 
     def _build_viewer(self):
         file = resource_files("vibview.examples").joinpath("water.h5")
-        result = parse_file(file, "native")
+        result = parse_file(file, "native", qpoint_index=0)
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
 
-        from vibview.renderers.vispy_renderer import VispyViewer
-
-        return VispyViewer(
+        return _make_viewer(
             structure,
-            config=Config.defaults(),
             mode_type="animate",
             create_window=False,
         )
@@ -70,7 +64,7 @@ class TestExportFromExample:
     def test_export_png(self):
         viewer = self._build_viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
-        viewer.export_animation(format="png", name="/tmp/test_export")
+        _export(viewer, "png", "/tmp/test_export")
 
         self.mock_render_frames.assert_called_once()
         self.mock_save_png.assert_called_once()
@@ -88,7 +82,7 @@ class TestExportFromExample:
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
 
         save_mock = getattr(self, save_mock_attr)
-        viewer.export_animation(format=fmt, name=f"/tmp/test_{fmt}")
+        _export(viewer, fmt, f"/tmp/test_{fmt}")
 
         self.mock_render_frames.assert_called_once()
         save_mock.assert_called_once()
@@ -127,7 +121,7 @@ class TestMainExportDispatch:
         mock_parse.assert_called_once()
         mock_viewer_cls.assert_called_once()
         mock_viewer.export_animation.assert_called_once_with(
-            format="png", name="/tmp/out"
+            format="png", name="/tmp/out", cycles=1, progress_callback=None
         )
 
     def test_export_returns_nonzero_on_parse_error(self):
@@ -198,14 +192,11 @@ class TestDiamondExample:
 
     def test_viewer_creates_crystal_scene(self):
         file = resource_files("vibview.examples").joinpath("diamond.h5")
-        result = parse_file(file, "native")
+        result = parse_file(file, "native", qpoint_index=0)
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
 
-        from vibview.renderers.vispy_renderer import VispyViewer
-
-        viewer = VispyViewer(
+        viewer = _make_viewer(
             structure,
-            config=Config.defaults(),
             mode_type="animate",
             create_window=False,
         )
@@ -216,7 +207,7 @@ class TestDiamondExample:
 
     def test_qpoint_switching(self):
         file = resource_files("vibview.examples").joinpath("diamond.h5")
-        result = parse_file(file, "native")
+        result = parse_file(file, "native", qpoint_index=0)
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
 
         structure.switch_qpoint(10)

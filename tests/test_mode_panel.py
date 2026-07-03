@@ -8,24 +8,41 @@ from vibview.models import Mode
 from vibview.renderers.qt_window import ModeSelectorPanel
 
 
+def _make_panel(modes, **kwargs):
+    defaults = dict(
+        initial_index=0,
+        initial_mode="animate",
+        initial_amplitudes=None,
+        initial_period=1.0,
+        frequency_units="?",
+        imaginary_color="#ff4444",
+        qpoints=None,
+        initial_qpoint=0,
+        initial_supercell=(1, 1, 1),
+        source_path=None,
+    )
+    defaults.update(kwargs)
+    return ModeSelectorPanel(modes, **defaults)
+
+
 class TestModeSelectorPanel:
     """Tests for the mode selector panel table widget."""
 
     @pytest.fixture(autouse=True)
     def _panel(self, _qapp):
-        self.Panel = ModeSelectorPanel
+        self.Panel = _make_panel
 
     def test_columns_always_visible(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
         assert not p.table.isColumnHidden(1)
         assert not p.table.isColumnHidden(2)
 
     @pytest.mark.parametrize(
         ("mode_kwargs", "col", "expected_text"),
         [
-            ({"frequency": 1550.0}, 1, "1550.0"),
-            ({"label": None}, 2, ""),
-            ({"label": "test"}, 2, "test"),
+            ({"frequency": 1550.0, "label": None}, 1, "1550.0"),
+            ({"frequency": 0.0, "label": None}, 2, ""),
+            ({"frequency": 0.0, "label": "test"}, 2, "test"),
         ],
     )
     def test_missing_value_display(self, mode_kwargs, col, expected_text):
@@ -35,13 +52,13 @@ class TestModeSelectorPanel:
         assert item.text() == expected_text
 
     def test_missing_freq_does_not_hide_freq_column(self):
-        modes = [Mode([[1.0, 0.0, 0.0]])]
+        modes = [Mode([[1.0, 0.0, 0.0]], frequency=0.0)]
         p = self.Panel(modes)
         assert not p.table.isColumnHidden(1)
         assert p.table.horizontalHeaderItem(1).text() == "Freq (?)"
 
     def test_empty_label_not_removed_from_layout(self):
-        modes = [Mode([[1.0, 0.0, 0.0]])]
+        modes = [Mode([[1.0, 0.0, 0.0]], frequency=0.0)]
         p = self.Panel(modes)
         assert not p.table.isColumnHidden(2)
         assert p.table.horizontalHeaderItem(2).text() == "Label"
@@ -50,7 +67,7 @@ class TestModeSelectorPanel:
     def test_natural_column_expands_to_fill_space(self):
         modes = [
             Mode([[0.0, 0.0, 0.0]], frequency=1550.0, label="test"),
-            Mode([[0.0, 0.0, 0.0]]),
+            Mode([[0.0, 0.0, 0.0]], frequency=0.0),
         ]
         p = self.Panel(modes)
         header = p.table.horizontalHeader()
@@ -59,7 +76,7 @@ class TestModeSelectorPanel:
         assert header.sectionResizeMode(2) == QHeaderView.ResizeMode.Stretch
 
     def test_mode_buttons_exist(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
         assert p._mode_buttons["animate"] is not None
         assert p._mode_buttons["static"] is not None
         assert p._mode_buttons["overlay"] is not None
@@ -67,7 +84,7 @@ class TestModeSelectorPanel:
         assert not p._mode_buttons["static"].isChecked()
 
     def test_mode_buttons_update_ui_instantly(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
         assert p.current_mode == "animate"
         p._mode_buttons["static"].click()
         assert p.current_mode == "static"
@@ -76,7 +93,7 @@ class TestModeSelectorPanel:
         assert p.amplitude_spin.value() == 0.5
 
     def test_amplitude_is_saved_per_mode(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
 
         assert p.amplitude_spin.value() == 0.1
 
@@ -89,7 +106,7 @@ class TestModeSelectorPanel:
         assert p.amplitude_spin.value() == 0.75
 
     def test_save_buttons_exist_and_visible_in_vib_mode(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
         assert p.btn_save_gif is not None
         assert p.btn_save_gif.text() == "GIF"
         assert not p.btn_save_gif.isHidden()
@@ -98,7 +115,7 @@ class TestModeSelectorPanel:
         assert not p.btn_save_png.isHidden()
 
     def test_save_buttons_hidden_in_static_mode(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])], initial_mode="static")
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)], initial_mode="static")
         assert p.btn_save_container.isHidden()
 
     def test_default_sort_by_frequency_ascending(self):
@@ -153,9 +170,9 @@ class TestModeSelectorPanel:
 
     def test_none_labels_sort_to_end_ascending(self):
         modes = [
-            Mode([[0.0, 0.0, 1.0]], label="z"),
-            Mode([[1.0, 0.0, 0.0]], label=None),
-            Mode([[0.0, 1.0, 0.0]], label="a"),
+            Mode([[0.0, 0.0, 1.0]], frequency=0.0, label="z"),
+            Mode([[1.0, 0.0, 0.0]], frequency=0.0, label=None),
+            Mode([[0.0, 1.0, 0.0]], frequency=0.0, label="a"),
         ]
         p = self.Panel(modes)
         p.table.horizontalHeader().sectionClicked.emit(2)
@@ -165,9 +182,9 @@ class TestModeSelectorPanel:
 
     def test_none_labels_sort_to_end_descending(self):
         modes = [
-            Mode([[0.0, 0.0, 1.0]], label="z"),
-            Mode([[1.0, 0.0, 0.0]], label=None),
-            Mode([[0.0, 1.0, 0.0]], label="a"),
+            Mode([[0.0, 0.0, 1.0]], frequency=0.0, label="z"),
+            Mode([[1.0, 0.0, 0.0]], frequency=0.0, label=None),
+            Mode([[0.0, 1.0, 0.0]], frequency=0.0, label="a"),
         ]
         p = self.Panel(modes)
         p.table.horizontalHeader().sectionClicked.emit(2)
@@ -242,7 +259,7 @@ class TestModeSelectorPanel:
                     assert item.foreground().color().name() != "#ff4444"
 
     def test_sort_indicator_shown_on_header(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
         header = p.table.horizontalHeader()
         assert header.isSortIndicatorShown()
 
@@ -266,7 +283,7 @@ class TestModeSelectorPanel:
         assert p._sort_column == 1
 
     def test_header_labels_bold(self):
-        p = self.Panel([Mode([[0.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[0.0, 0.0, 0.0]], frequency=0.0)])
         for i in range(3):
             item = p.table.horizontalHeaderItem(i)
             assert item is not None
@@ -295,7 +312,7 @@ class TestModeSelectorPanel:
         assert p._modes[pos0].label == "stretch"
 
     def test_on_label_edited_sets_dirty_and_enables_button(self):
-        p = self.Panel([Mode([[1.0, 0.0, 0.0]])], source_path="test.h5")
+        p = self.Panel([Mode([[1.0, 0.0, 0.0]], frequency=0.0)], source_path="test.h5")
         assert p._labels_dirty is False
         assert p.btn_save_labels.isEnabled() is False
 
@@ -305,23 +322,23 @@ class TestModeSelectorPanel:
         assert p.btn_save_labels.isEnabled() is True
 
     def test_on_label_edited_empty_string_clears_label(self):
-        p = self.Panel([Mode([[1.0, 0.0, 0.0]], label="stretch")])
+        p = self.Panel([Mode([[1.0, 0.0, 0.0]], frequency=0.0, label="stretch")])
         p.table.item(0, 2).setText("  ")
         p.table.cellChanged.emit(0, 2)
         assert p._modes[0].label is None
 
     def test_save_labels_button_disabled_on_qpoint_switch(self):
-        p = self.Panel([Mode([[1.0, 0.0, 0.0]])], source_path="test.h5")
+        p = self.Panel([Mode([[1.0, 0.0, 0.0]], frequency=0.0)], source_path="test.h5")
         p.table.item(0, 2).setText("test")
         p.table.cellChanged.emit(0, 2)
         assert p.btn_save_labels.isEnabled() is True
 
-        p.set_modes([Mode([[1.0, 0.0, 0.0]])])
+        p.set_modes([Mode([[1.0, 0.0, 0.0]], frequency=0.0)])
         assert p.btn_save_labels.isEnabled() is False
         assert p._labels_dirty is False
 
     def test_rebuild_table_does_not_trigger_dirty_flag(self):
-        p = self.Panel([Mode([[1.0, 0.0, 0.0]])])
+        p = self.Panel([Mode([[1.0, 0.0, 0.0]], frequency=0.0)])
         p._labels_dirty = False
         p.btn_save_labels.setEnabled(False)
         p._rebuild_table()

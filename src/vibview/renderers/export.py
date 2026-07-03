@@ -64,7 +64,7 @@ def save_gif(
 def save_mp4(
     images: list[np.ndarray],
     output_path: str,
-    fps: int = 30,
+    fps: int,
 ) -> Path:
     """Combine frames into an MP4 video (H.264) via imageio/ffmpeg.
 
@@ -85,7 +85,7 @@ def render_frames(
     canvas: Canvas,
     frame_positions: np.ndarray,
     apply_frame_fn: Callable[[int], None],
-    progress_callback: Callable[[int, int], None] | None = None,
+    progress_callback: Callable[[int, int], None] | None,
 ) -> list[np.ndarray]:
     """Render each frame position to an RGBA image.
 

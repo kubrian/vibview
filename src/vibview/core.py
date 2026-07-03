@@ -14,7 +14,7 @@ class Structure:
     def __init__(
         self,
         data: VibData,
-        qpoint_loader: Callable[[int], list[Mode]] | None = None,
+        qpoint_loader: Callable[[int], list[Mode]] | None,
     ):
         self.data = data
         self.qpoint_index: int = 0
@@ -36,11 +36,7 @@ class Structure:
         Raises:
             IndexError: If position is out of range.
         """
-        if 0 <= position < len(self.modes):
-            return self.modes[position]
-        raise IndexError(
-            f"Mode position {position} out of range (0–{len(self.modes) - 1})"
-        )
+        return self.modes[position]
 
     def detect_bonds(
         self, tolerance: float, config: Config
@@ -126,8 +122,8 @@ def generate_frames(
     mode_index: int,
     frames: int,
     amplitude: float,
-    cycles: int = 1,
-    supercell: tuple[int, int, int] | None = None,
+    cycles: int,
+    supercell: tuple[int, int, int] | None,
 ) -> np.ndarray:
     """Generate animation frames for a given vibrational mode.
 

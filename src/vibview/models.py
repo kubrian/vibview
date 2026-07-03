@@ -23,7 +23,7 @@ class Mode:
     """
 
     eigenvectors: np.ndarray
-    frequency: float = 0.0
+    frequency: float
     label: str | None = None
 
     def __post_init__(self) -> None:
@@ -44,9 +44,9 @@ class VibData:
 
     atoms: list[Atom]
     modes: list[Mode]
+    frequency_units: str
     qpoints: list[list[float]] | None = None
     lattice: list[list[float]] | None = None
-    frequency_units: str | None = None
 
     def __post_init__(self):
         if not self.atoms:
@@ -69,5 +69,5 @@ class ParseResult:
     """
 
     data: VibData
-    source: str | None = None
-    qpoint_loader: Callable[[int], list[Mode]] | None = None
+    source: str | None
+    qpoint_loader: Callable[[int], list[Mode]] | None

@@ -40,16 +40,16 @@ class ModeSelectorPanel(QWidget):
     def __init__(
         self,
         modes: list[Mode],
-        initial_index: int = 0,
-        initial_mode: str = "animate",
-        initial_amplitudes: dict[str, float] | None = None,
-        initial_period: float = 1.0,
-        frequency_units: str = "?",
-        imaginary_color: str = "#ff4444",
-        qpoints: list[list[float]] | None = None,
-        initial_qpoint: int = 0,
-        initial_supercell: tuple[int, int, int] = (1, 1, 1),
-        source_path: str | None = None,
+        initial_index: int,
+        initial_mode: str,
+        initial_amplitudes: dict[str, float] | None,
+        initial_period: float,
+        frequency_units: str,
+        imaginary_color: str,
+        qpoints: list[list[float]] | None,
+        initial_qpoint: int,
+        initial_supercell: tuple[int, int, int],
+        source_path: str | None,
     ):
         super().__init__()
         self.on_apply: Callable[[], None] | None = None
@@ -205,13 +205,17 @@ class ModeSelectorPanel(QWidget):
         layout.addWidget(self.period_container)
 
         self.btn_save_gif = QPushButton("GIF")
-        self.btn_save_gif.clicked.connect(lambda: self._on_save("gif"))
+        self.btn_save_gif.clicked.connect(
+            lambda: self._on_save("gif", is_sequence=False)
+        )
         self.btn_save_png = QPushButton("PNG")
         self.btn_save_png.clicked.connect(
             lambda: self._on_save("png", is_sequence=True)
         )
         self.btn_save_mp4 = QPushButton("MP4")
-        self.btn_save_mp4.clicked.connect(lambda: self._on_save("mp4"))
+        self.btn_save_mp4.clicked.connect(
+            lambda: self._on_save("mp4", is_sequence=False)
+        )
 
         btn_save_layout = QHBoxLayout()
         btn_save_layout.setContentsMargins(0, 0, 0, 0)
@@ -435,7 +439,7 @@ class ModeSelectorPanel(QWidget):
         progress.setValue(int(current / total * 100))
         QApplication.processEvents()
 
-    def _on_save(self, fmt: str, is_sequence: bool = False):
+    def _on_save(self, fmt: str, is_sequence: bool):
         if not self.on_save_animation:
             return
 
@@ -482,16 +486,16 @@ class VibviewWindow(QMainWindow):
         self,
         canvas: SceneCanvas,
         modes: list[Mode],
-        initial_index: int = 0,
-        initial_mode: str = "animate",
-        initial_amplitudes: dict[str, float] | None = None,
-        initial_period: float = 1.0,
-        frequency_units: str = "?",
-        imaginary_color: str = "#ff4444",
-        qpoints: list[list[float]] | None = None,
-        initial_qpoint: int = 0,
-        initial_supercell: tuple[int, int, int] = (1, 1, 1),
-        source_path: str | None = None,
+        initial_index: int,
+        initial_mode: str,
+        initial_amplitudes: dict[str, float] | None,
+        initial_period: float,
+        frequency_units: str,
+        imaginary_color: str,
+        qpoints: list[list[float]] | None,
+        initial_qpoint: int,
+        initial_supercell: tuple[int, int, int],
+        source_path: str | None,
     ):
         super().__init__()
         self.setWindowTitle("VibView")

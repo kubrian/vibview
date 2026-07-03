@@ -13,11 +13,17 @@ from vibview.models import Atom, Mode
 from vibview.parsers import parse as parse_file
 
 
+def _gen(structure, mode_index, **kwargs):
+    defaults = dict(amplitude=1.0, frames=1, cycles=1, supercell=None)
+    defaults.update(kwargs)
+    return generate_frames(structure, mode_index, **defaults)
+
+
 class TestGetMode:
     def test_get_mode_by_position(self):
         structure = _make_structure(
             [Atom("O", [0, 0, 0]), Atom("O", [0, 0, 1.2])],
-            [Mode([[0, 0, -0.707], [0, 0, 0.707]])],
+            [Mode([[0, 0, -0.707], [0, 0, 0.707]], frequency=0.0)],
         )
         mode = structure.get_mode(0)
         assert mode is not None
@@ -25,7 +31,7 @@ class TestGetMode:
     def test_invalid_position_raises(self):
         structure = _make_structure(
             [Atom("O", [0, 0, 0]), Atom("O", [0, 0, 1.2])],
-            [Mode([[0, 0, -0.707], [0, 0, 0.707]])],
+            [Mode([[0, 0, -0.707], [0, 0, 0.707]], frequency=0.0)],
         )
         with pytest.raises(IndexError):
             structure.get_mode(5)
@@ -36,20 +42,25 @@ class TestDetectBonds:
 
     def test_unknown_element_raises_key_error(self):
         atoms = [Atom("Xx", [0.0, 0.0, 0.0]), Atom("Xx", [0.0, 0.0, 1.5])]
-        structure = _make_structure(atoms, [Mode([[1, 0, 0], [-1, 0, 0]])])
+        structure = _make_structure(
+            atoms, [Mode([[1, 0, 0], [-1, 0, 0]], frequency=0.0)]
+        )
         with pytest.raises(KeyError, match="Xx"):
             structure.detect_bonds(tolerance=0.4, config=self._cfg)
 
     def test_mixed_known_unknown_elements_raises_key_error(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("Xx", [0.0, 0.0, 1.5])]
-        structure = _make_structure(atoms, [Mode([[1, 0, 0], [-1, 0, 0]])])
+        structure = _make_structure(
+            atoms, [Mode([[1, 0, 0], [-1, 0, 0]], frequency=0.0)]
+        )
         with pytest.raises(KeyError, match="Xx"):
             structure.detect_bonds(tolerance=0.4, config=self._cfg)
 
     def test_bond_detected_known_structure(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         structure = _make_structure(
-            atoms, [Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])]
+            atoms,
+            [Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0)],
         )
         bonds = structure.detect_bonds(tolerance=0.4, config=self._cfg)
         assert len(bonds) == 1
@@ -58,14 +69,18 @@ class TestDetectBonds:
     def test_no_bond_far_atoms(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 5.0])]
         structure = _make_structure(
-            atoms, [Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])]
+            atoms,
+            [Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0)],
         )
         bonds = structure.detect_bonds(tolerance=0.4, config=self._cfg)
         assert len(bonds) == 0
 
     def test_bond_with_tolerance(self):
         atoms = [Atom("C", [0.0, 0.0, 0.0]), Atom("C", [0.0, 0.0, 2.0])]
-        structure = _make_structure(atoms, [Mode([[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]])])
+        structure = _make_structure(
+            atoms,
+            [Mode([[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]], frequency=0.0)],
+        )
         bonds = structure.detect_bonds(tolerance=0.4, config=self._cfg)
         assert len(bonds) == 0
         bonds = structure.detect_bonds(tolerance=0.5, config=self._cfg)
@@ -73,7 +88,8 @@ class TestDetectBonds:
 
     def test_no_bonds_single_atom(self):
         structure = _make_structure(
-            [Atom("H", [0.0, 0.0, 0.0])], [Mode([[1.0, 0.0, 0.0]])]
+            [Atom("H", [0.0, 0.0, 0.0])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
         bonds = structure.detect_bonds(tolerance=0.4, config=self._cfg)
         assert bonds == []
@@ -83,9 +99,9 @@ class TestGenerateFrames:
     def test_shape_and_values(self):
         structure = _make_structure(
             [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])],
-            [Mode([[0, 0, -0.707], [0, 0, 0.707]])],
+            [Mode([[0, 0, -0.707], [0, 0, 0.707]], frequency=0.0)],
         )
-        frames = generate_frames(structure, 0, amplitude=1.0, frames=4)
+        frames = _gen(structure, 0, frames=4)
         assert frames.shape == (4, 2, 3)
         # t=0 → cos(0)=1 → max displacement
         assert np.allclose(frames[0], [[0, 0, -1.0], [0, 0, 2.2]], atol=1e-5)
@@ -95,9 +111,9 @@ class TestGenerateFrames:
     def test_single_frame(self):
         structure = _make_structure(
             [Atom("H", [1.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
-        frames = generate_frames(structure, 0, amplitude=0.5, frames=1)
+        frames = _gen(structure, 0, amplitude=0.5)
         assert frames.shape == (1, 1, 3)
         # t=0 → cos(0)=1 → max displacement
         assert np.allclose(frames[0], [[1.5, 0.0, 0.0]])
@@ -105,10 +121,10 @@ class TestGenerateFrames:
     def test_cycles_multiplies_frame_count(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
-        single = generate_frames(structure, 0, amplitude=1.0, frames=4, cycles=1)
-        multi = generate_frames(structure, 0, amplitude=1.0, frames=4, cycles=3)
+        single = _gen(structure, 0, frames=4)
+        multi = _gen(structure, 0, frames=4, cycles=3)
         assert single.shape == (4, 1, 3)
         assert multi.shape == (12, 1, 3)
         # each cycle ends at the same position
@@ -119,14 +135,12 @@ class TestGenerateFrames:
         """Supercell frames match expected per-cell displacements at q=Γ."""
         structure = _make_structure(
             [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])],
-            [Mode([[0, 0, -0.707], [0, 0, 0.707]])],
+            [Mode([[0, 0, -0.707], [0, 0, 0.707]], frequency=0.0)],
         )
         structure.data.lattice = [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]]
         structure.data.qpoints = [[0.0, 0.0, 0.0]]
 
-        frames = generate_frames(
-            structure, 0, frames=4, amplitude=1.0, supercell=(2, 1, 1)
-        )
+        frames = _gen(structure, 0, frames=4, supercell=(2, 1, 1))
         assert frames.shape == (4, 4, 3)  # 4 frames, 2 cells * 2 atoms = 4
         # At q=(0,0,0) and t=0, cell 0 and cell 1 have identical displacements
         # Cell 1: atoms at [0,0,0], [0,0,1.2]; Cell 2: atoms at [3,0,0], [3,0,1.2]
@@ -139,14 +153,12 @@ class TestGenerateFrames:
         """At q=(0.5,0,0), 2×1×1 supercell: cell 0 and cell 1 oppose at t=0."""
         structure = _make_structure(
             [Atom("O", [0.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
         structure.data.lattice = [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]]
         structure.data.qpoints = [[0.5, 0.0, 0.0]]
 
-        frames = generate_frames(
-            structure, 0, frames=4, amplitude=1.0, supercell=(2, 1, 1)
-        )
+        frames = _gen(structure, 0, frames=4, supercell=(2, 1, 1))
         assert frames.shape == (4, 2, 3)
         # cell 0 displaced +x, cell 1 displaced -x
         cell0_disp = frames[0, 0] - [0, 0, 0]
@@ -156,18 +168,18 @@ class TestGenerateFrames:
     def test_supercell_no_lattice_raises(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
         with pytest.raises(ValueError, match="lattice vectors"):
-            generate_frames(structure, 0, frames=1, amplitude=1.0, supercell=(2, 1, 1))
+            _gen(structure, 0, supercell=(2, 1, 1))
 
     def test_single_frame_displacement_amplitude(self):
         """frames=1 at t=0 yields displacement vectors with max norm ≈ amplitude."""
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0]), Atom("H", [1.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0], [-0.5, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0], [-0.5, 0.0, 0.0]], frequency=0.0)],
         )
-        frames = generate_frames(structure, 0, frames=1, amplitude=0.5)
+        frames = _gen(structure, 0, amplitude=0.5)
         disps = frames[0] - structure.xyz
         assert disps.shape == (2, 3)
         max_norm = np.linalg.norm(disps, axis=1).max()
@@ -176,33 +188,33 @@ class TestGenerateFrames:
     def test_single_frame_zero_amplitude(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
-        frames = generate_frames(structure, 0, frames=1, amplitude=0.0)
+        frames = _gen(structure, 0, amplitude=0.0)
         np.testing.assert_allclose(frames[0], structure.xyz)
 
     def test_single_frame_single_atom(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
-        frames = generate_frames(structure, 0, frames=1, amplitude=2.0)
+        frames = _gen(structure, 0, amplitude=2.0)
         disps = frames[0] - structure.xyz
         assert disps[0, 0] == pytest.approx(2.0, abs=1e-6)
 
     def test_single_frame_all_zero_eigenvectors(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0]), Atom("H", [1.0, 0.0, 0.0])],
-            [Mode([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])],
+            [Mode([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]], frequency=0.0)],
         )
-        frames = generate_frames(structure, 0, frames=1, amplitude=1.0)
+        frames = _gen(structure, 0)
         np.testing.assert_allclose(frames[0], structure.xyz)
 
     def test_supercell_displacement_amplitude(self):
         """Supercell displacement max norm ≈ amplitude at t=0."""
         structure = _make_structure(
             [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])],
-            [Mode([[0, 0, -0.707], [0, 0, 0.707]])],
+            [Mode([[0, 0, -0.707], [0, 0, 0.707]], frequency=0.0)],
         )
         structure.data.lattice = [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]]
         structure.data.qpoints = [[0.0, 0.0, 0.0]]
@@ -215,9 +227,7 @@ class TestGenerateFrames:
             -1, 3
         )
 
-        frames = generate_frames(
-            structure, 0, frames=1, amplitude=1.0, supercell=(2, 1, 1)
-        )
+        frames = _gen(structure, 0, supercell=(2, 1, 1))
         disps = frames[0] - eq_xyz
         assert disps.shape == (4, 3)
         # At q=Γ, all cells have identical displacement
@@ -228,7 +238,7 @@ class TestGenerateFrames:
         """Supercell displacement with non-zero q shows Bloch phase."""
         structure = _make_structure(
             [Atom("O", [0.0, 0.0, 0.0])],
-            [Mode([[1.0, 0.0, 0.0]])],
+            [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
         )
         structure.data.lattice = [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0], [0.0, 0.0, 4.0]]
         structure.data.qpoints = [[0.5, 0.0, 0.0]]
@@ -241,9 +251,7 @@ class TestGenerateFrames:
             -1, 3
         )
 
-        frames = generate_frames(
-            structure, 0, frames=1, amplitude=1.0, supercell=(2, 1, 1)
-        )
+        frames = _gen(structure, 0, supercell=(2, 1, 1))
         disps = frames[0] - eq_xyz
         assert disps.shape == (2, 3)
         # Cell 0: exp(i·0) = 1 → displacement along +x
@@ -265,7 +273,9 @@ class TestFromFile:
                 data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
             )
             g.create_dataset("frequencies", data=np.array([100.0], dtype=np.float64))
-        structure = Structure(parse_file(p, "native").data)
+        structure = Structure(
+            parse_file(p, "native", qpoint_index=0).data, qpoint_loader=None
+        )
         assert len(structure.atoms) == 1
         assert structure.atoms[0].symbol == "H"
 

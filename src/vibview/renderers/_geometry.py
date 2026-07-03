@@ -26,7 +26,7 @@ def get_basis_properties(structure, config):
     return basis_radii, basis_colors
 
 
-def build_cylinder_mesh(segments, radius, color, parent, shading=None, cols=8):
+def build_cylinder_mesh(segments, radius, color, parent, shading, cols):
     """Build a merged visuals.Mesh from cylinder segments.
 
     Args:
@@ -158,8 +158,8 @@ def build_arrow_visuals(
     tip_length,
     color,
     parent,
-    shading=None,
-    cone_offset=0.0,
+    shading,
+    cone_offset,
 ):
     """Create Tube shaft + cone tip visuals for an arrow.
 

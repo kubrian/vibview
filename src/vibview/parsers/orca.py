@@ -47,6 +47,8 @@ def parse(path: Path) -> ParseResult:
             modes=modes,
             frequency_units="cm⁻¹",
         ),
+        source=None,
+        qpoint_loader=None,
     )
 
 

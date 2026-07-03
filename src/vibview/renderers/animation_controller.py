@@ -45,6 +45,7 @@ class AnimationController:
                 mode_index,
                 amplitude,
                 self.frames_per_cycle,
+                cycles=1,
                 supercell=supercell,
             )
             self._frames_cache[key] = self.frames
@@ -101,6 +102,7 @@ class AnimationController:
                 positions,
                 sb.config.rendering.bond_radius,
                 parent,
+                cols=12,
             )
             atom_mesh.visible = fi == 0
             bond_mesh.visible = fi == 0
@@ -141,9 +143,7 @@ class AnimationController:
         for b in self.scene_builder.bonds.visuals:
             b.visible = True
 
-    def render_export_frames(
-        self, canvas, export_frame_positions, progress_callback=None
-    ):
+    def render_export_frames(self, canvas, export_frame_positions, progress_callback):
         timer_was_running = self.timer is not None and self.timer.running
         saved_frames = self.frames
         saved_frame_idx = self.frame_idx

@@ -40,7 +40,7 @@ def _write_labels(f: h5py.File, data: np.ndarray) -> None:
 def update_labels(
     path: Path,
     modes: list[Mode],
-    qpoint_index: int | None = None,
+    qpoint_index: int | None,
 ) -> None:
     """Update the /modes/labels dataset in-place in a native HDF5 file.
 

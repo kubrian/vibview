@@ -1,7 +1,7 @@
 """Configuration loading, merging, and typed access."""
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from functools import cache
 from importlib.resources import files as resource_files
 from pathlib import Path
@@ -296,7 +296,7 @@ class Config:
     axis: AxisConfig
     display: DisplayConfig
     export: ExportConfig
-    elements: dict[str, ElementConfig] = field(default_factory=dict, repr=False)
+    elements: dict[str, ElementConfig]
 
     @classmethod
     def defaults(cls) -> "Config":
@@ -323,7 +323,7 @@ class Config:
         return cls(**kwargs)
 
     @classmethod
-    def load(cls, session_config: Path | None = None) -> "Config":
+    def load(cls, session_config: Path | None) -> "Config":
         """Config cascade: session config > user config > defaults."""
         cfg = dict(_load_defaults())
 

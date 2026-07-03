@@ -144,11 +144,7 @@ def parse(
     path: Path,
     qpoint_index: int,
 ) -> ParseResult:
-    yaml_path = Path(path)
-    if not yaml_path.exists():
-        raise FileNotFoundError(f"Phonopy YAML file not found: {yaml_path}")
-
-    with open(yaml_path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         lines = f.readlines()
 
     phonon_idx = None
@@ -188,6 +184,6 @@ def parse(
             lattice=lattice.tolist(),
             frequency_units="THz",
         ),
-        source=str(yaml_path),
+        source=str(path),
         qpoint_loader=qp_loader,
     )

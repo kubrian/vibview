@@ -35,7 +35,12 @@ class ModeOverlayManager:
         for supercell.
         """
         frames = generate_frames(
-            structure, mode_index, frames=1, amplitude=amplitude, supercell=supercell
+            structure,
+            mode_index,
+            frames=1,
+            amplitude=amplitude,
+            cycles=1,
+            supercell=supercell,
         )
         return frames[0] - np.asarray(eq_xyz, dtype=np.float64)
 
@@ -45,7 +50,7 @@ class ModeOverlayManager:
         mode_index,
         amplitude,
         eq_xyz,
-        supercell=None,
+        supercell,
     ):
         disps = self._get_displacements(
             structure, mode_index, amplitude, supercell, eq_xyz
@@ -80,6 +85,7 @@ class ModeOverlayManager:
                 scfg.arrow_color,
                 self.view_scene,
                 shading=cfg.effective_shading,
+                cone_offset=0.0,
             )
             if self.camera:
                 self.camera.apply_shading_filter(tube)
@@ -94,7 +100,7 @@ class ModeOverlayManager:
         amplitude,
         eq_xyz,
         bond_indices,
-        supercell=None,
+        supercell,
     ):
         disps = self._get_displacements(
             structure, mode_index, amplitude, supercell, eq_xyz

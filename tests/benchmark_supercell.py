@@ -5,7 +5,7 @@ Run with: pixi run pytest tests/benchmark_supercell.py --benchmark-only
 """
 
 import pytest
-from conftest import _make_structure_with_lattice
+from conftest import _make_structure_with_lattice, _make_viewer
 
 from vibview.config import Config
 from vibview.core import _cell_offsets
@@ -34,7 +34,7 @@ def supercell(request):
 def benchmark_structure():
     """O2 molecule (2 atoms) with lattice for supercell expansion."""
     atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
-    mode = Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
+    mode = Mode([[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]], frequency=0.0, label=None)
     return _make_structure_with_lattice(atoms, [mode], LATTICE)
 
 
@@ -42,12 +42,9 @@ class TestSupercellBenchmark:
     """Measure supercell-related operations."""
 
     def test_ensure_supercell_time(self, benchmark_structure, supercell, benchmark):
-        from vibview.renderers.vispy_renderer import VispyViewer
-
         def setup():
-            v = VispyViewer(
+            v = _make_viewer(
                 benchmark_structure,
-                config=Config.defaults(),
                 mode_type="static",
                 supercell=(1, 1, 1),
             )
@@ -60,11 +57,8 @@ class TestSupercellBenchmark:
         benchmark.pedantic(run, setup=setup, rounds=8)
 
     def test_build_base_visuals_time(self, benchmark_structure, supercell, benchmark):
-        from vibview.renderers.vispy_renderer import VispyViewer
-
-        viewer = VispyViewer(
+        viewer = _make_viewer(
             benchmark_structure,
-            config=Config.defaults(),
             mode_type="static",
             supercell=supercell,
         )

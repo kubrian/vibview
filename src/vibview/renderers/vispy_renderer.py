@@ -98,9 +98,7 @@ class VispyViewer:
     # ── Window ──
     def _setup_window(self, config, mode_index, qpoint_index) -> None:
         qpoints = self.structure.data.qpoints or []
-        frequency_units = (
-            self.structure.data.frequency_units or config.display.frequency_units
-        )
+        frequency_units = self.structure.data.frequency_units
         self.window = VibviewWindow(
             self.camera.canvas,
             self.structure.modes,
@@ -117,7 +115,9 @@ class VispyViewer:
         )
         self.window.on_camera_reset = self.camera.reset_camera
         self.window.panel.on_apply = self._on_apply
-        self.window.panel.on_save_animation = self.export_animation
+        self.window.panel.on_save_animation = lambda fmt, name, progress_callback: (
+            self.export_animation(fmt, name, self.cycles, progress_callback)
+        )
         self.window.panel.on_save_labels = self._on_save_labels
 
     # ── Q-point switching ──
@@ -207,10 +207,9 @@ class VispyViewer:
         self,
         format: str,
         name: str,
-        cycles: int | None = None,
-        progress_callback: Callable[[int, int], None] | None = None,
+        cycles: int,
+        progress_callback: Callable[[int, int], None] | None,
     ) -> None:
-        cycles = self.cycles if cycles is None else cycles
 
         fps = {"gif": self.gif_fps, "mp4": self.mp4_fps}.get(format, self.fps)
         n_frames = max(int(round(fps * self.period)), 2)
@@ -236,7 +235,7 @@ class VispyViewer:
         elif format == "gif":
             out_path = f"{name}.gif"
             duration = 1000.0 / self.gif_fps
-            path = save_gif(images, out_path, duration=duration)
+            path = save_gif(images, out_path, duration=duration, loop=0)
             print(f"Exported GIF to {path}", file=sys.stderr)
         elif format == "mp4":
             out_path = f"{name}.mp4"

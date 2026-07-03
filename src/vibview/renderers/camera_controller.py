@@ -102,9 +102,7 @@ class CameraController:
             sf.specular_light = self._lighting.specular
             sf.shininess = self._lighting.shininess
 
-    def _add_small_arrow(self, origin, direction, length, color, radius, parent=None):
-        if parent is None:
-            parent = self.view.scene
+    def _add_small_arrow(self, origin, direction, length, color, radius, parent):
         direction = np.array(direction, dtype=float)
         norm = np.linalg.norm(direction)
         if norm < 1e-12:
