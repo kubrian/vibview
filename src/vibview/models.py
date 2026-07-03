@@ -51,6 +51,11 @@ class VibData:
     def __post_init__(self):
         if not self.atoms:
             raise ValueError("Atoms list cannot be empty")
+        if (self.qpoints is None) != (self.lattice is None):
+            raise ValueError(
+                "Molecular structures must have neither q-points nor lattice; "
+                "periodic structures must have both"
+            )
         for mode in self.modes:
             if len(mode.eigenvectors) != len(self.atoms):
                 raise ValueError(

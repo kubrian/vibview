@@ -35,6 +35,7 @@ def _make_h5(path, **overrides):
         g = f.create_group("modes")
         g.create_dataset("eigenvectors", data=ev)
         g.create_dataset("frequencies", data=freq)
+        g["frequencies"].attrs["units"] = "cm⁻¹"
         if overrides.get("labels") is not None:
             g.create_dataset("labels", data=overrides["labels"])
 

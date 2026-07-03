@@ -170,9 +170,6 @@ overlay:
 
 # ── Display — metadata and overlays ───────────────────────────
 display:
-  # Label shown next to frequency values (e.g. "cm⁻¹").
-  frequency_units: "?"
-
   # Colour for imaginary-frequency rows in the mode list.
   imaginary_color: "#ff4444"
 

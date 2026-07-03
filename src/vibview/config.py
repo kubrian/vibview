@@ -281,7 +281,6 @@ class AxisConfig:
 class DisplayConfig:
     """Configuration for display metadata (units, colours, overlays)."""
 
-    frequency_units: str
     imaginary_color: Color
     show_axis: bool
     supercell: tuple[int, int, int]

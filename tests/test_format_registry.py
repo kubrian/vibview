@@ -26,6 +26,7 @@ class TestRegistryContents:
                 data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
             )
             g.create_dataset("frequencies", data=np.array([0.0], dtype=np.float64))
+            g["frequencies"].attrs["units"] = "cm⁻¹"
         result = parse(p, "native", qpoint_index=0)
         assert result.source == str(p)
 

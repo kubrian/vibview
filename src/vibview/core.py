@@ -24,6 +24,11 @@ class Structure:
         self.modes = data.modes
         self.xyz = np.array([a.xyz for a in self.atoms])
 
+    @property
+    def is_crystal(self) -> bool:
+        """Whether this structure is periodic (has q-points and lattice)."""
+        return self.data.qpoints is not None
+
     def get_mode(self, position: int) -> Mode:
         """Get a vibrational mode by its frequency-sorted position.
 

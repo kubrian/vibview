@@ -185,7 +185,7 @@ class VispyViewer:
             return
 
         p = Path(path)
-        qp_idx = self.qpoint_index if self.structure.data.qpoints else None
+        qp_idx = self.qpoint_index if self.structure.is_crystal else None
         try:
             update_labels(p, self.structure.modes, qpoint_index=qp_idx)
         except (OSError, KeyError) as e:

@@ -18,8 +18,14 @@ def _make_structure(atoms, modes):
 
 
 def _make_structure_with_lattice(atoms, modes, lattice):
-    """Build a Structure with lattice vectors."""
-    internal = VibData(atoms, modes, lattice=lattice, frequency_units="?")
+    """Build a Structure with lattice vectors and Gamma-point q-point."""
+    internal = VibData(
+        atoms,
+        modes,
+        lattice=lattice,
+        qpoints=[[0.0, 0.0, 0.0]],
+        frequency_units="?",
+    )
     return Structure(internal, qpoint_loader=None)
 
 
@@ -63,6 +69,7 @@ def _make_crystal_h5(path, n_qpoints=2, n_bands=2, n_atoms=2, labels=None):
         g = f.create_group("modes")
         g.create_dataset("eigenvectors", data=ev)
         g.create_dataset("frequencies", data=freq)
+        g["frequencies"].attrs["units"] = "THz"
         if labels is not None:
             g.create_dataset("labels", data=labels)
         f.create_dataset("lattice", data=lattice)

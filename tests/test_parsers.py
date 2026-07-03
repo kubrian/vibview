@@ -42,6 +42,7 @@ def _make_h5(path, **overrides):
         g = f.create_group("modes")
         g.create_dataset("eigenvectors", data=ev)
         g.create_dataset("frequencies", data=freq)
+        g["frequencies"].attrs["units"] = "cm⁻¹"
         if overrides.get("labels") is not None:
             g.create_dataset("labels", data=overrides["labels"])
 
@@ -67,6 +68,7 @@ class TestParseErrors:
             ("no-modes", ValueError, "Missing /modes/eigenvectors"),
             ("no-freq", ValueError, "missing required dataset /modes/frequencies"),
             ("nan-freq", ValueError, "NaN frequency"),
+            ("no-units", ValueError, "missing required 'units' attribute"),
         ],
     )
     def test_parse_error(self, tmp_path, setup_fn, exc_type, match):
@@ -100,6 +102,20 @@ class TestParseErrors:
                 n_modes=1,
                 frequencies=np.array([np.nan], dtype=np.float64),
             )
+        elif setup_fn == "no-units":
+            with h5py.File(p, "w") as f:
+                g = f.create_group("atoms")
+                g.create_dataset("symbols", data=np.array([b"H"]))
+                g.create_dataset("positions", data=np.zeros((1, 3), dtype=np.float64))
+                g = f.create_group("modes")
+                g.create_dataset(
+                    "eigenvectors",
+                    data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
+                )
+                g.create_dataset(
+                    "frequencies", data=np.array([100.0], dtype=np.float64)
+                )
+                # Deliberately omit the 'units' attribute
         with pytest.raises(exc_type, match=match):
             parse(p)
 

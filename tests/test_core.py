@@ -273,6 +273,7 @@ class TestFromFile:
                 data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
             )
             g.create_dataset("frequencies", data=np.array([100.0], dtype=np.float64))
+            g["frequencies"].attrs["units"] = "cm⁻¹"
         structure = Structure(
             parse_file(p, "native", qpoint_index=0).data, qpoint_loader=None
         )

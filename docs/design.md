@@ -17,7 +17,7 @@ Canonical interchange format produced by all parsers and consumed by the renderi
 | `modes`           | `list[Mode]`        | No       | Active q-point modes (eager) |
 | `qpoints`         | `list[list[float]]` | Yes      | Crystal data only            |
 | `lattice`         | `list[list[float]]` | Yes      | 3×3 matrix in Å              |
-| `frequency_units` | `str \| None`       | Yes      | From parser, e.g. `"cm⁻¹"`   |
+| `frequency_units` | `str`               | No       | From parser, e.g. `"cm⁻¹"`   |
 
 ### Atom
 
@@ -79,9 +79,11 @@ serialize); `storage.py` handles targeted in-place edits to previously dumped fi
     ├── eigenvectors        [dataset: (Nmodes, Nat, 3) float16] — molecular
     │                       [dataset: (Nq, Nb, Nat, 3, 2) float16] — crystal
     │                       crystal last dim = (real, imag); upcast to complex64 on read
-    ├── frequencies         [dataset: (Nmodes,) float64]
+    ├── frequencies         [dataset: (Nmodes,) float64] — molecular
+    │                       [dataset: (Nq, Nb) float64, chunked+gzip] — crystal
     │   └── units           [attr: string, optional]
-    └── labels              [dataset: (Nmodes,) UTF-8 string, optional]
+    └── labels              [dataset: (Nmodes,) UTF-8 string, optional] — molecular
+                            [dataset: (Nq, Nb) UTF-8 string, optional, chunked+gzip] — crystal
 ```
 
 Molecular: 3D float16 eigenvectors (real only). Crystal: 5D float16 stacked as `(real, imag)` pairs, halving file size with no visible quality loss. Both use per-q-point chunking to enable O(1) HDF5 seek for lazy loading.
@@ -121,7 +123,7 @@ Three modes are selectable via the UI buttons (`Animate`, `Static`, `Overlay`):
 
 ### Mode selection & frequency display
 
-Modes are selected by frequency-sorted position (0-based internally, 1-indexed in the table UI). Frequency is displayed if present with default sort ascending on this column. Unit label uses `data.frequency_units` falling back to `config.display.frequency_units` (default `"?"`). Labels are editable inline for native HDF5 files only; editing sets a dirty flag and enables a Save Labels button. Switching q-points with dirty labels shows a confirmation dialog.
+Modes are selected by frequency-sorted position (0-based internally, 1-indexed in the table UI). Frequency is displayed if present with default sort ascending on this column. Unit label uses `data.frequency_units`. Labels are editable inline for native HDF5 files only; editing sets a dirty flag and enables a Save Labels button. Switching q-points with dirty labels shows a confirmation dialog.
 
 ### Animation engine
 

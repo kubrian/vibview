@@ -1,34 +1,8 @@
 """Parser and serializer for the native vibview HDF5 format.
 
-Schema
-------
-
-**Molecular** (no lattice/qpoints)::
-
-    /
-    ├── atoms/
-    │   ├── symbols         [dataset: (Nat,) UTF-8 string]
-    │   └── positions       [dataset: (Nat, 3) float64]
-    └── modes/
-        ├── eigenvectors    [dataset: (Nb, Nat, 3) float64]
-        ├── frequencies     [dataset: (Nb,) float64]
-        ├── labels          [dataset: (Nb,) UTF-8 string, optional]
-        └── units           [attr on frequencies: string, optional]
-
-**Crystal** (with lattice/qpoints)::
-
-    /
-    ├── lattice             [dataset: (3, 3) float64]
-    ├── qpoints             [dataset: (Nq, 3) float64]
-    ├── atoms/
-    │   ├── symbols         [dataset: (Nat,) UTF-8 string]
-    │   └── positions       [dataset: (Nat, 3) float64]
-    └── modes/
-        ├── eigenvectors    [dataset: (Nq, Nb, Nat, 3, 2) float16, chunked+gzip]
-        │                   last dim = (real, imag); upcast to complex64 on read
-        ├── frequencies     [dataset: (Nq, Nb) float64, chunked+gzip]
-        ├── labels          [dataset: (Nq, Nb) UTF-8 string, optional, chunked+gzip]
-        └── units           [attr on frequencies: string, optional]
+The canonical schema is documented in ``docs/design.md`` (section 2,
+"Native HDF5 schema").  All eigenvectors are stored as **float16**;
+crystal datasets use gzip compression with per-q-point chunking.
 """
 
 from collections.abc import Callable
@@ -139,11 +113,13 @@ def parse(path: Path, qpoint_index: int) -> ParseResult:
         labels_ds = f.get("/modes/labels")
 
         raw = freq_ds.attrs.get("units")
-        frequency_units = (
-            (_decode_bytes(raw) if isinstance(raw, bytes) else raw)
-            if raw is not None
-            else None
-        )
+        if raw is None:
+            raise ValueError(
+                f"File {path} is missing required 'units' attribute "
+                "on /modes/frequencies. This file is not a valid "
+                "vibview native format file."
+            )
+        frequency_units = _decode_bytes(raw) if isinstance(raw, bytes) else raw
 
         lattice = None
         if "/lattice" in f:
