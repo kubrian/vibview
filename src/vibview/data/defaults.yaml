@@ -44,8 +44,8 @@ lighting:
 
 # ── Camera — viewport and camera defaults ─────────────────────
 camera:
-  # Field of view (degrees).
-  fov: 45
+  # Field of view (degrees). 0 = orthographic (no perspective distortion).
+  fov: 0
 
   # Fill factor for auto-distance calculation.
   fill_factor: 0.75
@@ -65,40 +65,61 @@ camera:
   # Axis indicator sub-view camera distance.
   axis_camera_distance: 5.0
 
-  # Axis indicator sub-view FOV (degrees).
-  axis_camera_fov: 30
+  # Axis indicator sub-view FOV (degrees). 0 = orthographic.
+  axis_camera_fov: 0
+
+  # Initial camera pose (auto = compute from structure).
+  center: auto
+
+  # Camera distance in Å (auto = compute from fill_factor + fov).
+  distance: auto
+
+  # Azimuth angle in degrees (auto = ArcballCamera default).
+  azimuth: auto
+
+  # Elevation angle in degrees (auto = ArcballCamera default).
+  elevation: auto
+
+  # Show heads-up display overlay on startup.
+  show_hud: false
+
+  # HUD font size in points.
+  hud_font_size: 9
+
+  # Extra vertical space between HUD lines (pixels).
+  hud_linespace: 2
+
+  # HUD margin from viewport edge (pixels).
+  hud_margin: 12
+
+  # HUD text colour (hex).
+  hud_color: "#ffffff"
+
+  # HUD text opacity (0–1).
+  hud_alpha: 0.8
 
 # ── Axis — coordinate axis indicators ─────────────────────────
 axis:
-  # Arrow shaft radius for Cartesian axes (Å).
-  shaft_radius: 0.03
+  # Arrow shaft radius (Å).
+  shaft_radius: 0.06
 
-  # Arrow shaft radius for lattice-vector axes (Å).
-  lattice_shaft_radius: 0.04
+  # Cone base radius (Å).
+  tip_radius: 0.12
 
-  # Tip length = vector length × factor (capped at tip_length_max).
-  tip_length_factor: 0.3
+  # Cone length (Å).
+  tip_length: 0.36
 
-  # Maximum tip length (Å).
-  tip_length_max: 0.3
-
-  # Tip radius = shaft_radius × factor.
-  tip_radius_factor: 2.0
-
-  # Colours for lattice-vector axes [a, b, c].
-  colors_lattice: ["#ff8888", "#88ff88", "#8888ff"]
-
-  # Colours for Cartesian axes [x, y, z].
-  colors_cartesian: ["#ff4444", "#44ff44", "#4444ff"]
+  # Colours for [x, y, z] or [a, b, c] axes.
+  colors: ["#ff4444", "#44ff44", "#4444ff"]
 
   # Arrow length in the axis indicator sub-view (Å).
-  arrow_length: 0.8
+  arrow_length: 1.2
 
   # Label offset from arrow tip (Å).
-  label_offset: 0.2
+  label_offset: 0.3
 
   # Label font size.
-  label_font_size: 40
+  label_font_size: 10
 
 # ── Animation — viewer animation ──────────────────────────────
 animation:

@@ -583,7 +583,7 @@ class TestCameraInteraction:
         viewer.camera.view.camera.events.mouse_wheel.connect.assert_called_once_with(
             viewer.camera.sync_axis_camera
         )
-        viewer.camera.canvas.events.draw.connect.assert_called_once_with(
+        viewer.camera.canvas.events.draw.connect.assert_any_call(
             viewer.camera.sync_axis_camera
         )
 

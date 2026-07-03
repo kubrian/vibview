@@ -98,6 +98,29 @@ class TestVibviewWindow:
         )
         win.keyPressEvent(event_r)
 
+    def test_d_key_calls_hud_toggle_callback(self, _mock_canvas):
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
+        toggle = MagicMock()
+        win.on_toggle_hud = toggle
+        event_d = QKeyEvent(
+            QKeyEvent.Type.KeyPress, Qt.Key.Key_D, Qt.KeyboardModifier.NoModifier
+        )
+        win.keyPressEvent(event_d)
+        toggle.assert_called_once()
+
+    def test_d_key_no_callback_does_not_crash(self, _mock_canvas):
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
+        event_d = QKeyEvent(
+            QKeyEvent.Type.KeyPress, Qt.Key.Key_D, Qt.KeyboardModifier.NoModifier
+        )
+        win.keyPressEvent(event_d)
+
     def test_window_title(self, _mock_canvas):
         win = _make_window(
             _mock_canvas,

@@ -114,6 +114,7 @@ class VispyViewer:
             source_path=self._source_path,
         )
         self.window.on_camera_reset = self.camera.reset_camera
+        self.window.on_toggle_hud = self.camera.toggle_hud
         self.window.panel.on_apply = self._on_apply
         self.window.panel.on_save_animation = lambda fmt, name, progress_callback: (
             self.export_animation(fmt, name, self.cycles, progress_callback)
@@ -244,4 +245,5 @@ class VispyViewer:
 
     def run(self) -> None:
         self.window.show()
+        self.camera.prewarm_hud()
         app.run()

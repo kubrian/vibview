@@ -171,6 +171,10 @@ def _patch_vispy(request):
         mock_camera.return_value.transform = _mock_transform
         mock_camera.return_value.center = (0.0, 0.0, 0.0)
         mock_camera.return_value.distance = 10.0
+        mock_camera.return_value.fov = 0
+        mock_quaternion = MagicMock()
+        mock_quaternion.get_matrix.return_value = np.eye(4, dtype=np.float64)
+        mock_camera.return_value._quaternion = mock_quaternion
         request.instance.mock_canvas = mock_canvas
         request.instance.mock_camera = mock_camera
         request.instance.mock_sphere = mock_sphere

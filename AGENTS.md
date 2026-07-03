@@ -79,7 +79,7 @@ Implementation workflow (strict order):
 - **Conventional commits:** `type: description` (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`).
 - **One commit per task:** Before committing, inspect `git diff`. Revert scope creep, dead code, speculative abstractions.
 - **Non-goals are law:** If non-goals are specified, the diff must not touch those areas — even if the code there is ugly.
-- **YAGNI:** No base classes, interfaces, or abstractions introduced "just in case." A 30-line function is fine. Prefer simplest correct solution. No ABCs, hooks, or multi-version support without need.
+- **YAGNI:** No base classes, interfaces, or abstractions introduced "just in case." A 30-line function is fine. Prefer simplest correct solution. No ABCs, hooks, or multi-version support without need. Optional parameters (dataclass fields, function/method arguments) must have a documented justification — without one they are speculative defaults.
 - **No dead code:** Remove unused functions, imports, config keys. Never comment them out.
 - **No silent failures:** Every error path raises or logs with context. No bare `except`, no ignored return values.
 

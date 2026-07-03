@@ -11,6 +11,8 @@ import yaml
 
 USER_CONFIG_PATH = Path.home() / ".config" / "vibview" / "config.yaml"
 
+_AUTO = float("inf")
+
 _SUBDIVISION_PRESETS: dict[str, int] = {
     "low": 1,
     "medium": 2,
@@ -237,6 +239,16 @@ class CameraConfig:
     axis_view_padding: int
     axis_camera_distance: float
     axis_camera_fov: float
+    center: tuple[float, float, float]
+    distance: float
+    azimuth: float
+    elevation: float
+    show_hud: bool
+    hud_font_size: int
+    hud_linespace: int
+    hud_margin: int
+    hud_color: Color
+    hud_alpha: float
 
     def __post_init__(self):
         if isinstance(self.default_window_size, list):
@@ -247,34 +259,89 @@ class CameraConfig:
             )
         if self.fill_factor <= 0 or self.fill_factor > 1:
             raise ValueError(f"fill_factor must be in (0, 1], got {self.fill_factor}")
-        if self.fov <= 0 or self.fov >= 180:
+        if self.fov < 0 or self.fov >= 180:
             raise ValueError(f"fov must be between 0 and 180, got {self.fov}")
+        if isinstance(self.center, str):
+            if self.center != "auto":
+                raise ValueError(
+                    f"center: expected a list or 'auto', got {self.center!r}"
+                )
+            self.center = (_AUTO,) * 3
+        if isinstance(self.center, list):
+            self.center = tuple(self.center)
+        if len(self.center) != 3:
+            raise ValueError(f"center must have 3 elements, got {len(self.center)}")
+        if isinstance(self.distance, str):
+            if self.distance != "auto":
+                raise ValueError(
+                    f"distance: expected a number or 'auto', got {self.distance!r}"
+                )
+            self.distance = _AUTO
+        if isinstance(self.azimuth, str):
+            if self.azimuth != "auto":
+                raise ValueError(
+                    f"azimuth: expected a number or 'auto', got {self.azimuth!r}"
+                )
+            self.azimuth = _AUTO
+        if isinstance(self.elevation, str):
+            if self.elevation != "auto":
+                raise ValueError(
+                    f"elevation: expected a number or 'auto', got {self.elevation!r}"
+                )
+            self.elevation = _AUTO
+        if self.distance != _AUTO and self.distance <= 0:
+            raise ValueError(f"distance must be positive, got {self.distance}")
+        if self.elevation != _AUTO and (self.elevation < -90 or self.elevation > 90):
+            raise ValueError(
+                f"elevation must be between -90 and 90, got {self.elevation}"
+            )
+        if self.hud_font_size <= 0:
+            raise ValueError(
+                f"hud_font_size must be positive, got {self.hud_font_size}"
+            )
+        if self.hud_linespace < 0:
+            raise ValueError(
+                f"hud_linespace must be non-negative, got {self.hud_linespace}"
+            )
+        if self.hud_margin < 0:
+            raise ValueError(f"hud_margin must be non-negative, got {self.hud_margin}")
+        if not 0 <= self.hud_alpha <= 1:
+            raise ValueError(f"hud_alpha must be between 0 and 1, got {self.hud_alpha}")
 
 
 @dataclass
 class AxisConfig:
-    """Configuration for coordinate axis indicator appearance."""
+    """Configuration for coordinate axis indicator appearance.
+
+    Controls the arrows and labels drawn in the orthographic axis
+    sub-view (lower-left corner of the canvas).
+
+    Args:
+        shaft_radius: Tube radius for the arrow shaft (Å).
+        tip_radius: Base radius of the cone tip (Å).
+        tip_length: Length of the cone tip (Å).
+        colors: Three colours, one per axis — used for Cartesian
+            (x, y, z) when no lattice is present, or lattice
+            (a, b, c) when a lattice is available.
+        arrow_length: Total arrow length from origin to tip end (Å).
+        label_offset: Distance from the arrow tip to the label (Å).
+        label_font_size: Label text font size in pixels.
+    """
 
     shaft_radius: float
-    lattice_shaft_radius: float
-    tip_length_factor: float
-    tip_length_max: float
-    tip_radius_factor: float
-    colors_lattice: tuple[Color, Color, Color]
-    colors_cartesian: tuple[Color, Color, Color]
+    tip_radius: float
+    tip_length: float
+    colors: tuple[Color, Color, Color]
     arrow_length: float
     label_offset: float
     label_font_size: int
 
     def __post_init__(self):
-        for attr in ("colors_lattice", "colors_cartesian"):
-            val = getattr(self, attr)
-            if isinstance(val, list):
-                setattr(self, attr, tuple(val))
-            if len(getattr(self, attr)) != 3:
-                raise ValueError(
-                    f"{attr} must have 3 elements, got {len(getattr(self, attr))}"
-                )
+        val = self.colors
+        if isinstance(val, list):
+            self.colors = tuple(val)
+        if len(self.colors) != 3:
+            raise ValueError(f"colors must have 3 elements, got {len(self.colors)}")
 
 
 @dataclass
@@ -349,9 +416,10 @@ class Config:
         "static": {"arrow_color"},
         "overlay": {"eq_color", "disp_color"},
         "display": {"imaginary_color"},
+        "camera": {"hud_color"},
     }
     _COLOR_TUPLE_FIELDS: ClassVar[dict[str, set[str]]] = {
-        "axis": {"colors_lattice", "colors_cartesian"},
+        "axis": {"colors"},
     }
 
     @classmethod

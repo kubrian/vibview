@@ -500,6 +500,7 @@ class VibviewWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("VibView")
         self.on_camera_reset: Callable[[], None] | None = None
+        self.on_toggle_hud: Callable[[], None] | None = None
 
         self.panel = ModeSelectorPanel(
             modes,
@@ -554,5 +555,8 @@ class VibviewWindow(QMainWindow):
         elif event.key() == Qt.Key.Key_R:
             if self.on_camera_reset:
                 self.on_camera_reset()
+        elif event.key() == Qt.Key.Key_D:
+            if self.on_toggle_hud:
+                self.on_toggle_hud()
         else:
             super().keyPressEvent(event)
