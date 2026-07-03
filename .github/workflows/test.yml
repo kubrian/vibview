@@ -33,6 +33,8 @@ jobs:
         run: pixi run pre-commit run --all-files || true
 
       - name: Run tests with coverage
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: pixi run pytest --cov=vibview --cov-report=xml
 
       - name: Upload coverage report
