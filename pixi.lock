@@ -8989,8 +8989,8 @@ packages:
   timestamp: 1781320948530
 - pypi: ./
   name: vibview
-  version: 0.1.0
-  sha256: 379a8426cebd26191f9c5f104703b14b341c1fb084c96a64ad79f70e96ebfa06
+  version: 0.2.0
+  sha256: 74abfdb4d556e77b455ad53e64617cb1d60084a2c70718ca6afe395ced235d35
   requires_dist:
   - numpy>=2.2.6,<3
   - pyyaml>=6.0.3,<7
