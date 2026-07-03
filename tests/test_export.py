@@ -6,8 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from tests.conftest import _make_structure
-from vibview.config import Config
+from tests.conftest import _export, _make_structure, _make_viewer
 from vibview.models import Atom, Mode
 from vibview.renderers.export import (
     render_frames,
@@ -57,24 +56,10 @@ class TestSaveGif:
 
 
 class TestSaveMp4:
-    def test_raises_if_ffmpeg_missing(self, tmp_path: Path):
-        images = _make_dummy_images(3)
-        out = tmp_path / "anim.mp4"
-        with (
-            patch("vibview.renderers.export.shutil.which", return_value=None),
-            pytest.raises(RuntimeError, match="ffmpeg"),
-        ):
-            save_mp4(images, str(out), fps=30)
-
-    def test_calls_imageio_when_ffmpeg_present(self, tmp_path: Path):
+    def test_calls_imageio(self, tmp_path: Path):
         images = _make_dummy_images(3, h=4, w=4)
         out = tmp_path / "anim.mp4"
-        with (
-            patch(
-                "vibview.renderers.export.shutil.which", return_value="/usr/bin/ffmpeg"
-            ),
-            patch("imageio.v3.imwrite") as mock_iio,
-        ):
+        with patch("imageio.v3.imwrite") as mock_iio:
             save_mp4(images, str(out), fps=30)
         mock_iio.assert_called_once()
         args, kwargs = mock_iio.call_args
@@ -89,7 +74,7 @@ class TestRenderFrames:
         apply_fn = MagicMock()
         frames = np.zeros((5, 3, 3))
 
-        render_frames(canvas, frames, apply_fn)
+        render_frames(canvas, frames, apply_fn, progress_callback=None)
 
         assert apply_fn.call_count == 5
         for i in range(5):
@@ -100,7 +85,7 @@ class TestRenderFrames:
         canvas.render.return_value = np.zeros((4, 4, 4), dtype=np.uint8)
         frames = np.zeros((3, 2, 3))
 
-        images = render_frames(canvas, frames, lambda i: None)
+        images = render_frames(canvas, frames, lambda i: None, progress_callback=None)
 
         assert len(images) == 3
         for img in images:
@@ -111,7 +96,7 @@ class TestRenderFrames:
         canvas.render.return_value = np.zeros((4, 4, 4), dtype=np.uint8)
         frames = np.zeros((0, 2, 3))
 
-        images = render_frames(canvas, frames, lambda i: None)
+        images = render_frames(canvas, frames, lambda i: None, progress_callback=None)
 
         assert images == []
 
@@ -121,57 +106,57 @@ class TestExportAnimationOnViewer:
 
     pytestmark = pytest.mark.usefixtures("_mock_qt_window", "_patch_vispy")
 
-    def _make_viewer(self):
-        from vibview.renderers.vispy_renderer import VispyViewer
-
-        return VispyViewer(
-            _make_structure([Atom("O", [0.0, 0.0, 0.0])], [Mode(0, [[1.0, 0.0, 0.0]])]),
-            config=Config.defaults(),
+    def _viewer(self):
+        return _make_viewer(
+            _make_structure(
+                [Atom("O", [0.0, 0.0, 0.0])],
+                [Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
+            ),
             mode_type="animate",
         )
 
     def test_export_png_calls_save_png_sequence(self, tmp_path: Path):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
         name = str(tmp_path / "anim")
-        viewer.export_animation(format="png", name=name)
+        _export(viewer, "png", name)
         self.mock_render_frames.assert_called_once()
         self.mock_save_png.assert_called_once()
         args, _ = self.mock_save_png.call_args
         assert args[1] == name
 
     def test_export_gif_calls_save_gif(self, tmp_path: Path):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
         name = str(tmp_path / "anim")
-        viewer.export_animation(format="gif", name=name)
+        _export(viewer, "gif", name)
         self.mock_save_gif.assert_called_once()
         args, kwargs = self.mock_save_gif.call_args
         assert args[1] == f"{name}.gif"
         assert kwargs.get("duration") == pytest.approx(100.0)
 
     def test_export_mp4_calls_save_mp4(self, tmp_path: Path):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
         name = str(tmp_path / "anim")
-        viewer.export_animation(format="mp4", name=name)
+        _export(viewer, "mp4", name)
         self.mock_save_mp4.assert_called_once()
         args, kwargs = self.mock_save_mp4.call_args
         assert args[1] == f"{name}.mp4"
         assert kwargs.get("fps") == 60
 
     def test_export_uses_frames_per_cycle(self):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
-        viewer.export_animation(format="png", name="/tmp/out")
+        _export(viewer, "png", "/tmp/out")
         args, _ = self.mock_render_frames.call_args
         frames_arg = args[1]
         assert len(frames_arg) == viewer.animation.frames_per_cycle
 
     def test_export_cycles_multiplies_frames(self):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
-        viewer.export_animation(format="png", name="/tmp/out", cycles=3)
+        _export(viewer, "png", "/tmp/out", cycles=3)
         args, _ = self.mock_render_frames.call_args
         frames_arg = args[1]
         assert len(frames_arg) == viewer.animation.frames_per_cycle * 3
@@ -181,18 +166,18 @@ class TestExportAnimationOnViewer:
         [("gif", "gif_fps", 10), ("mp4", "mp4_fps", 60)],
     )
     def test_export_fps_per_format(self, fmt, fps_attr, expected_fps):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
         fps = getattr(viewer, fps_attr)
         expected_frames = max(int(round(fps * viewer.period)), 2)
-        viewer.export_animation(format=fmt, name="/tmp/out")
+        _export(viewer, fmt, "/tmp/out")
         args, _ = self.mock_render_frames.call_args
         frames_arg = args[1]
         assert len(frames_arg) == expected_frames
 
     def test_export_restores_original_frames(self):
-        viewer = self._make_viewer()
+        viewer = self._viewer()
         original_frames = viewer.animation.frames.copy()
         self.mock_render_frames.return_value = [np.zeros((4, 4, 4), dtype=np.uint8)]
-        viewer.export_animation(format="gif", name="/tmp/out")
+        _export(viewer, "gif", "/tmp/out")
         np.testing.assert_array_equal(viewer.animation.frames, original_frames)

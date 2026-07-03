@@ -1,6 +1,5 @@
 """Animation export: PNG sequence, GIF, and MP4 generation."""
 
-import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -65,7 +64,7 @@ def save_gif(
 def save_mp4(
     images: list[np.ndarray],
     output_path: str,
-    fps: int = 30,
+    fps: int,
 ) -> Path:
     """Combine frames into an MP4 video (H.264) via imageio/ffmpeg.
 
@@ -74,17 +73,7 @@ def save_mp4(
         output_path: Path for the output MP4 file.
         fps: Frames per second (default 30).
 
-    Raises:
-        RuntimeError: If ffmpeg is not found on $PATH.
     """
-    if shutil.which("ffmpeg") is None:
-        raise RuntimeError(
-            "MP4 export requires ffmpeg on $PATH. Install it with:\n"
-            "  conda install ffmpeg\n"
-            "  apt install ffmpeg        # Debian/Ubuntu\n"
-            "  brew install ffmpeg       # macOS"
-        )
-
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     rgb_images = [img[..., :3] for img in images]
@@ -96,7 +85,7 @@ def render_frames(
     canvas: Canvas,
     frame_positions: np.ndarray,
     apply_frame_fn: Callable[[int], None],
-    progress_callback: Callable[[int, int], None] | None = None,
+    progress_callback: Callable[[int, int], None] | None,
 ) -> list[np.ndarray]:
     """Render each frame position to an RGBA image.
 

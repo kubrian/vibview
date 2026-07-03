@@ -8,7 +8,7 @@ from pathlib import Path
 
 from vibview.config import USER_CONFIG_PATH, Config
 from vibview.core import Structure
-from vibview.parsers import PARSERS, make_qpoint_loader
+from vibview.parsers import PARSER_NAMES, make_qpoint_loader
 from vibview.parsers import parse as parse_file
 from vibview.parsers.native import dump as dump_native
 from vibview.renderers.vispy_renderer import VispyViewer
@@ -21,27 +21,34 @@ def _add_input_args(parser: argparse.ArgumentParser) -> None:
         nargs="?",
         type=Path,
         default=None,
-        help="Input file (default: bundled H\u2082O example)",
+        help="Input file (default: bundled water example)",
     )
     parser.add_argument(
         "type",
         nargs="?",
         default="native",
-        choices=sorted(PARSERS),
+        choices=sorted(PARSER_NAMES),
         help="Input file format (default: native)",
     )
 
     # --- data selection ---
     g = parser.add_argument_group("Data selection")
     g.add_argument(
+        "--example",
+        "-e",
+        type=str,
+        help="Load bundled example by name (e.g. 'water', 'diamond')",
+    )
+    g.add_argument(
         "--mode",
-        "-i",
+        "-m",
         type=int,
         default=0,
         help="Vibrational mode index (0-based, default: 0)",
     )
     g.add_argument(
         "--qpoint",
+        "-q",
         type=int,
         default=0,
         help="Q-point index (0-based, default: 0)",
@@ -139,32 +146,42 @@ def _run_init_config(args: argparse.Namespace) -> int:
     return 0
 
 
-def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure]:
+def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure, str | None]:
     """Load config, parse file, and build Structure.
 
     Args:
         args: Parsed CLI arguments.
 
     Returns:
-        Tuple of (config, structure).
+        Tuple of (config, structure, source_path).
 
     Raises:
         FileNotFoundError: If the input file does not exist.
-        ValueError: If the file format is unsupported or if
-            exporting a non-native file.
+        ValueError: If --example and input file are both provided,
+            if the format is unsupported, if exporting a non-native
+            file, or if --example is set to an unknown name.
     """
-    config = Config.load(session_config=args.config)
+    config = Config.load(args.config)
 
-    if args.file is None:
+    if args.example and args.file is not None:
+        raise ValueError("--example and input file are mutually exclusive")
+
+    if args.example:
+        ex_path = resource_files("vibview.examples").joinpath(f"{args.example}.h5")
+        if not ex_path.exists():
+            raise ValueError(f"Unknown example '{args.example}'")
+        file = ex_path
+        file_type = "native"
+    elif args.file is None:
         if args.command in ("export", "convert"):
             raise ValueError(f"'{args.command}' requires an input file")
-        file = resource_files("vibview.examples").joinpath("h2o.h5")
+        file = resource_files("vibview.examples").joinpath("water.h5")
         file_type = "native"
     else:
         file = args.file
         file_type = args.type
 
-    result = parse_file(file, file_type)
+    result = parse_file(file, file_type, args.qpoint)
 
     if args.command == "view" and file_type != "native":
         print(
@@ -185,7 +202,7 @@ def _load_structure(args: argparse.Namespace) -> tuple[Config, Structure]:
     if args.qpoint != 0:
         structure.switch_qpoint(args.qpoint)
 
-    return config, structure
+    return config, structure, result.source
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -200,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code (0 on success, 1 on error).
     """
+    if argv is None:
+        argv = sys.argv[1:]
     parser = create_parser()
     args = parser.parse_args(argv)
 
@@ -207,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run_init_config(args)
 
     try:
-        config, structure = _load_structure(args)
+        config, structure, source_path = _load_structure(args)
     except (FileNotFoundError, ValueError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -221,7 +240,9 @@ def main(argv: list[str] | None = None) -> int:
             mode_type=config.animation.default_mode,
             mode_index=args.mode,
             qpoint_index=args.qpoint,
+            create_window=True,
             supercell=supercell,
+            source_path=source_path,
         )
         viewer.run()
 
@@ -234,14 +255,19 @@ def main(argv: list[str] | None = None) -> int:
             qpoint_index=args.qpoint,
             create_window=False,
             supercell=supercell,
+            source_path=source_path,
         )
-        viewer.export_animation(format=args.format, name=args.name)
+        viewer.export_animation(
+            format=args.format,
+            name=args.name,
+            cycles=config.export.cycles,
+            progress_callback=None,
+        )
 
     elif args.command == "convert":
         dump_native(
             structure.data,
             args.output,
-            frequency_units=config.display.frequency_units,
             qpoint_loader=structure.qpoint_loader,
             qpoint_index=structure.qpoint_index,
         )

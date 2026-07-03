@@ -37,7 +37,7 @@ def parse(path: Path) -> ParseResult:
     normal_modes = _parse_normal_modes(sections["$normal_modes"], len(atoms))
 
     modes = [
-        Mode(index=i, eigenvectors=ev, frequency=freq)
+        Mode(eigenvectors=ev, frequency=freq)
         for i, (ev, freq) in enumerate(zip(normal_modes, frequencies, strict=True))
     ]
 
@@ -47,6 +47,8 @@ def parse(path: Path) -> ParseResult:
             modes=modes,
             frequency_units="cm⁻¹",
         ),
+        source=None,
+        qpoint_loader=None,
     )
 
 

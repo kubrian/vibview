@@ -1,5 +1,8 @@
 # vibview
 
+> **⚠️ Pre-release — everything may break.**
+> All features, CLI flags, config keys, file formats, and APIs are tentative and subject to backward-incompatible changes without notice. This is not version 1.0.
+
 [![Docs](https://github.com/kubrian/vibview/actions/workflows/docs.yml/badge.svg)](https://kubrian.github.io/vibview)
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)

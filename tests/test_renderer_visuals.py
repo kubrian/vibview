@@ -4,9 +4,8 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from vispy.color import Color
 
-from tests.conftest import _make_structure, _make_structure_with_lattice
+from tests.conftest import _make_structure, _make_structure_with_lattice, _make_viewer
 from vibview.config import Config
 from vibview.models import Atom, Mode
 from vibview.renderers.vispy_renderer import VispyViewer
@@ -17,7 +16,10 @@ pytestmark = pytest.mark.usefixtures("_mock_qt_window", "_patch_vispy")
 class TestVispyViewerStaticMode:
     def test_sphere_no_center_kwarg(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
-        mode = Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
+        mode = Mode(
+            [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
 
         cfg = Config.defaults()
@@ -32,7 +34,7 @@ class TestVispyViewerStaticMode:
             assert kwargs.get("radius") == pytest.approx(
                 0.66 * cfg.rendering.radii_scale
             )
-            assert kwargs.get("color") == "#ff0d0d"
+            assert kwargs.get("color") == pytest.approx(cfg.elements["O"].color.rgba)
             assert kwargs.get("method") == "ico"
             assert kwargs.get("subdivisions") == 2
             assert kwargs.get("shading") == cfg.rendering.effective_shading
@@ -49,7 +51,10 @@ class TestVispyViewerStaticMode:
     def test_arrow_positions(self):
         atoms = [Atom("O", [1.0, 0.0, 0.0]), Atom("O", [-1.0, 0.0, 0.0])]
         ev = [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
-        mode = Mode(0, ev)
+        mode = Mode(
+            ev,
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
 
         amplitude = 2.0
@@ -69,10 +74,13 @@ class TestVispyViewerStaticMode:
 
     def test_camera_center_is_centroid(self):
         atoms = [Atom("O", [2.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 4.0])]
-        mode = Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
+        mode = Mode(
+            [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
 
-        VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        _make_viewer(structure, mode_type="static")
 
         _, call_kwargs = self.mock_camera.call_args_list[0]
         np.testing.assert_array_equal(call_kwargs["center"], [1.0, 0.0, 2.0])
@@ -84,7 +92,12 @@ class TestVispyViewerVibrationMode:
     def test_timer_created(self):
         structure = _make_structure(
             [Atom("N", [0.0, 0.0, 0.0])],
-            [Mode(0, [[1.0, 0.0, 0.0]])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
         )
 
         cfg = Config.defaults()
@@ -99,10 +112,15 @@ class TestVispyViewerVibrationMode:
     def test_update_with_frames(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode(0, [[1.0, 0.0, 0.0]])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
         )
 
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="animate")
+        viewer = _make_viewer(structure, mode_type="animate")
         assert len(viewer.scene.atoms.visuals) == 1
         assert viewer.scene.atoms.visuals[0].transform is not None
 
@@ -128,7 +146,10 @@ class TestVispyViewerVibrationMode:
 class TestBonds:
     def test_bond_tube_created_static(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
-        mode = Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
+        mode = Mode(
+            [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
 
         cfg = Config.defaults()
@@ -142,7 +163,7 @@ class TestBonds:
             tube_call[1]["points"], [[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]]
         )
         assert tube_call[1]["radius"] == cfg.rendering.bond_radius
-        assert tube_call[1]["color"] == cfg.rendering.bond_color
+        assert tube_call[1]["color"] == pytest.approx(cfg.rendering.bond_color.rgba)
         assert tube_call[1].get("shading") == cfg.rendering.effective_shading
 
 
@@ -153,7 +174,12 @@ class TestDiffMode:
     def oo_structure(self):
         return _make_structure(
             [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])],
-            [Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])],
+            [
+                Mode(
+                    [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]],
+                    frequency=0.0,
+                )
+            ],
         )
 
     def _get_wireframe_tube_calls(self, n_bonds):
@@ -161,20 +187,18 @@ class TestDiffMode:
         return all_tube_calls[-2 * n_bonds :] if n_bonds > 0 else []
 
     def test_wireframe_tubes_created_for_each_bond(self, oo_structure):
-        VispyViewer(oo_structure, config=Config.defaults(), mode_type="overlay")
+        _make_viewer(oo_structure, mode_type="overlay")
         assert len(self._get_wireframe_tube_calls(n_bonds=1)) == 2
 
     def test_atoms_hidden_bonds_visible_in_overlay_mode(self, oo_structure):
-        viewer = VispyViewer(
-            oo_structure, config=Config.defaults(), mode_type="overlay"
-        )
+        viewer = _make_viewer(oo_structure, mode_type="overlay")
         for s in viewer.scene.atoms.visuals:
             assert s.visible is False
         for b in viewer.scene.bonds.visuals:
             assert b.visible is True
 
     def test_wireframe_uses_translucent_blending_no_depth(self, oo_structure):
-        VispyViewer(oo_structure, config=Config.defaults(), mode_type="overlay")
+        _make_viewer(oo_structure, mode_type="overlay")
         for call in self.mock_tube.return_value.set_gl_state.call_args_list:
             kwargs = call[1]
             assert kwargs.get("preset") == "translucent"
@@ -210,10 +234,10 @@ class TestDiffMode:
         VispyViewer(oo_structure, config=cfg, mode_type="overlay")
         wireframe_calls = self._get_wireframe_tube_calls(n_bonds=1)
         assert wireframe_calls[0][1]["color"][:3] == pytest.approx(
-            Color(cfg.overlay.eq_color).rgb
+            cfg.overlay.eq_color.rgb
         )
         assert wireframe_calls[1][1]["color"][:3] == pytest.approx(
-            Color(cfg.overlay.disp_color).rgb
+            cfg.overlay.disp_color.rgb
         )
 
     def test_wireframe_multiple_bonds(self):
@@ -222,7 +246,10 @@ class TestDiffMode:
             Atom("H", [1.0, 0.0, 0.0]),
             Atom("H", [0.5, 0.866, 0.0]),
         ]
-        mode = Mode(0, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+        mode = Mode(
+            [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
         cfg = Config.defaults()
         VispyViewer(structure, config=cfg, mode_type="overlay")
@@ -232,8 +259,16 @@ class TestDiffMode:
     def test_diff_offset_gives_visible_separation(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
         ev = [[0.0, 0.0, 0.5], [0.0, 0.0, -0.5]]
-        structure = _make_structure(atoms, [Mode(0, ev)])
-        VispyViewer(structure, config=Config.defaults(), mode_type="overlay")
+        structure = _make_structure(
+            atoms,
+            [
+                Mode(
+                    ev,
+                    frequency=0.0,
+                )
+            ],
+        )
+        _make_viewer(structure, mode_type="overlay")
         wireframe_calls = self._get_wireframe_tube_calls(n_bonds=1)
         assert not np.array_equal(
             wireframe_calls[0][1]["points"], wireframe_calls[1][1]["points"]
@@ -244,32 +279,57 @@ class TestDiffMode:
         lattice = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
         structure = _make_structure_with_lattice(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode(0, [[1.0, 0.0, 0.0]])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
             lattice,
         )
 
         with pytest.raises(
             ValueError, match="Invalid lattice: expected 0 or 3 vectors"
         ):
-            VispyViewer(structure, config=Config.defaults(), mode_type="static")
+            _make_viewer(structure, mode_type="static")
 
     def test_no_bonds_diff_mode_no_crash(self):
         structure = _make_structure(
-            [Atom("H", [0.0, 0.0, 0.0])], [Mode(0, [[1.0, 0.0, 0.0]])]
+            [Atom("H", [0.0, 0.0, 0.0])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
         )
-        VispyViewer(structure, config=Config.defaults(), mode_type="overlay")
+        _make_viewer(structure, mode_type="overlay")
         assert len(self.mock_tube.call_args_list) == 3  # axis indicators only
 
 
 class TestUnknownElementInRenderer:
     """Visuals built for atoms with unknown element symbols."""
 
-    def test_unknown_element_raises_key_error(self):
+    def test_unknown_element_uses_fallback(self):
         atoms = [Atom("Xx", [0.0, 0.0, 0.0])]
-        structure = _make_structure(atoms, [Mode(0, [[1.0, 0.0, 0.0]])])
+        structure = _make_structure(
+            atoms,
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
+        )
         cfg = Config.defaults()
-        with pytest.raises(KeyError, match="Xx"):
-            VispyViewer(structure, config=cfg, mode_type="static")
+        VispyViewer(structure, config=cfg, mode_type="static")
+        sphere_calls = self.mock_sphere.call_args_list
+        assert sphere_calls[0][1]["color"] == pytest.approx(
+            cfg.rendering.atom_color.rgba
+        )
+        assert sphere_calls[0][1]["radius"] == pytest.approx(
+            cfg.rendering.atom_radius * cfg.rendering.radii_scale
+        )
 
 
 class TestBondTransforms:
@@ -277,9 +337,12 @@ class TestBondTransforms:
 
     def test_bond_along_positive_z(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 1.2])]
-        mode = Mode(0, [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]])
+        mode = Mode(
+            [[0.0, 0.0, -0.707], [0.0, 0.0, 0.707]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
 
         assert len(viewer.scene.bonds.transforms) == 1
         tr = viewer.scene.bonds.transforms[0]
@@ -299,9 +362,12 @@ class TestBondTransforms:
             Atom("O", atom_positions[0]),
             Atom("O", atom_positions[1]),
         ]
-        mode = Mode(0, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+        mode = Mode(
+            [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
 
         tr = viewer.scene.bonds.transforms[0]
         tr.translate.assert_called_once()
@@ -309,9 +375,12 @@ class TestBondTransforms:
 
     def test_zero_length_bond(self):
         atoms = [Atom("O", [0.0, 0.0, 0.0]), Atom("O", [0.0, 0.0, 0.0])]
-        mode = Mode(0, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+        mode = Mode(
+            [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]],
+            frequency=0.0,
+        )
         structure = _make_structure(atoms, [mode])
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
 
         assert len(viewer.scene.bonds.transforms) == 1
         tr = viewer.scene.bonds.transforms[0]
@@ -332,7 +401,12 @@ class TestFramesPerCycle:
     def test_frames_per_cycle(self, fps, period, expected):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode(0, [[1.0, 0.0, 0.0]])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
         )
         cfg = Config.defaults()
         cfg.animation.fps = fps
@@ -343,7 +417,12 @@ class TestFramesPerCycle:
     def test_frames_per_cycle_minimum_two(self):
         structure = _make_structure(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode(0, [[1.0, 0.0, 0.0]])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
         )
         cfg = Config.defaults()
         cfg.animation.fps = 1
@@ -362,21 +441,30 @@ class TestLattice:
     def lattice_struct(self):
         return _make_structure_with_lattice(
             [Atom("H", [0.0, 0.0, 0.0])],
-            [Mode(0, [[1.0, 0.0, 0.0]])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
             LATTICE,
         )
 
     def test_mesh_created_when_lattice_present(self, lattice_struct):
-        viewer = VispyViewer(
-            lattice_struct, config=Config.defaults(), mode_type="static"
-        )
+        viewer = _make_viewer(lattice_struct, mode_type="static")
         assert len(viewer.scene.lattice.visuals) == 1
 
     def test_not_created_without_lattice(self):
         structure = _make_structure(
-            [Atom("H", [0.0, 0.0, 0.0])], [Mode(0, [[1.0, 0.0, 0.0]])]
+            [Atom("H", [0.0, 0.0, 0.0])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
         )
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
         assert len(viewer.scene.lattice.visuals) == 0
 
     def test_configures_mesh_properties(self, lattice_struct):
@@ -392,11 +480,20 @@ class TestLattice:
         assert color[3] == cfg.lattice.alpha
 
     def test_persists_across_mode_switch(self):
-        modes = [Mode(0, [[1.0, 0.0, 0.0]]), Mode(1, [[-1.0, 0.0, 0.0]])]
+        modes = [
+            Mode(
+                [[1.0, 0.0, 0.0]],
+                frequency=0.0,
+            ),
+            Mode(
+                [[-1.0, 0.0, 0.0]],
+                frequency=0.0,
+            ),
+        ]
         structure = _make_structure_with_lattice(
             [Atom("H", [1.0, 0.0, 0.0])], modes, LATTICE
         )
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
         viewer.switch_mode(1)
         assert len(viewer.scene.lattice.visuals) == 1
 
@@ -404,28 +501,62 @@ class TestLattice:
 class TestAxisIndicators:
     def test_cartesian_axes_created(self):
         atoms = [Atom("H", [0.0, 0.0, 0.0])]
-        structure = _make_structure(atoms, [Mode(0, [[1.0, 0.0, 0.0]])])
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        structure = _make_structure(
+            atoms,
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
+        )
+        viewer = _make_viewer(structure, mode_type="static")
         assert len(viewer.camera.axis_visuals) == 6  # 3 arrows * (tube + cone)
 
     def test_axis_indicators_with_lattice(self):
         structure = _make_structure_with_lattice(
-            [Atom("H", [0.0, 0.0, 0.0])], [Mode(0, [[1.0, 0.0, 0.0]])], LATTICE
+            [Atom("H", [0.0, 0.0, 0.0])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
+            LATTICE,
         )
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        viewer = _make_viewer(structure, mode_type="static")
         assert len(viewer.camera.axis_visuals) == 6  # 3 lattice arrows * (tube + cone)
 
     def test_persists_across_mode_switch(self):
-        modes = [Mode(0, [[1.0, 0.0, 0.0]]), Mode(1, [[-1.0, 0.0, 0.0]])]
-        structure = _make_structure([Atom("H", [0.0, 0.0, 0.0])], modes)
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        structure = _make_structure(
+            [Atom("H", [0.0, 0.0, 0.0])],
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                ),
+                Mode(
+                    [[-1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                ),
+            ],
+        )
+        viewer = _make_viewer(structure, mode_type="static")
         assert len(viewer.camera.axis_visuals) == 6
         viewer.switch_mode(1)
         assert len(viewer.camera.axis_visuals) == 6
 
     def test_axes_hidden_when_show_axis_false(self):
         atoms = [Atom("H", [0.0, 0.0, 0.0])]
-        structure = _make_structure(atoms, [Mode(0, [[1.0, 0.0, 0.0]])])
+        structure = _make_structure(
+            atoms,
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
+        )
         cfg = Config.defaults()
         cfg.display.show_axis = False
         viewer = VispyViewer(structure, config=cfg, mode_type="static")
@@ -436,22 +567,38 @@ class TestAxisIndicators:
 class TestCameraInteraction:
     def test_axis_sync_events_connected(self):
         atoms = [Atom("H", [0.0, 0.0, 0.0])]
-        structure = _make_structure(atoms, [Mode(0, [[1.0, 0.0, 0.0]])])
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        structure = _make_structure(
+            atoms,
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
+        )
+        viewer = _make_viewer(structure, mode_type="static")
         viewer.camera.view.camera.events.mouse_move.connect.assert_called_once_with(
             viewer.camera.sync_axis_camera
         )
         viewer.camera.view.camera.events.mouse_wheel.connect.assert_called_once_with(
             viewer.camera.sync_axis_camera
         )
-        viewer.camera.canvas.events.draw.connect.assert_called_once_with(
+        viewer.camera.canvas.events.draw.connect.assert_any_call(
             viewer.camera.sync_axis_camera
         )
 
     def test_camera_reset(self):
         atoms = [Atom("H", [0.0, 0.0, 0.0])]
-        structure = _make_structure(atoms, [Mode(0, [[1.0, 0.0, 0.0]])])
-        viewer = VispyViewer(structure, config=Config.defaults(), mode_type="static")
+        structure = _make_structure(
+            atoms,
+            [
+                Mode(
+                    [[1.0, 0.0, 0.0]],
+                    frequency=0.0,
+                )
+            ],
+        )
+        viewer = _make_viewer(structure, mode_type="static")
         viewer.camera.set_initial_state(
             center=np.array([1.0, 2.0, 3.0]),
             distance=15.0,

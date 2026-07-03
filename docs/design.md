@@ -17,7 +17,7 @@ Canonical interchange format produced by all parsers and consumed by the renderi
 | `modes`           | `list[Mode]`        | No       | Active q-point modes (eager) |
 | `qpoints`         | `list[list[float]]` | Yes      | Crystal data only            |
 | `lattice`         | `list[list[float]]` | Yes      | 3×3 matrix in Å              |
-| `frequency_units` | `str \| None`       | Yes      | From parser, e.g. `"cm⁻¹"`   |
+| `frequency_units` | `str`               | No       | From parser, e.g. `"cm⁻¹"`   |
 
 ### Atom
 
@@ -35,13 +35,14 @@ Cartesian coordinates in Å.
 ```python
 @dataclass
 class Mode:
-    index: int
-    eigenvectors: np.ndarray  # complex64, shape (n_atoms, 3)
-    frequency: float | None = None
+    eigenvectors: np.ndarray  # complex64 (internal), shape (n_atoms, 3)
+    frequency: float = 0.0
     label: str | None = None
 ```
 
-Eigenvectors are Cartesian displacement vectors in Å, L2-normalized over all 3N components (‖e‖ = 1). Frequency is optional. Negative frequencies (imaginary modes) are flagged (default red) in the mode list.
+Eigenvectors are Cartesian displacement vectors in Å, L2-normalized over all 3N components (‖e‖ = 1). Frequency is mandatory. Negative frequencies (imaginary modes) are flagged (default red) in the mode list.
+
+Modes are frequency-sorted ascending at load time (both molecular and per-q-point for crystals). The `#` column in the mode selector displays the 1-indexed frequency-sorted position.
 
 ---
 
@@ -59,24 +60,44 @@ Each parser module exposes `parse(path: Path, ...) -> ParseResult`. Post-parse v
 | `orca`    | `*.hess`                  | Frequencies + mass-weighted normal modes  |
 | `phonopy` | `band.yaml` / `mesh.yaml` | Self-contained (lattice + atoms embedded) |
 
+### Storage layer
+
+In-place file mutations (e.g. label updates) live in `vibview.storage` rather than
+the parser layer. `parsers/native.py` handles file ↔ VibData conversion (parse &
+serialize); `storage.py` handles targeted in-place edits to previously dumped files.
+
 ### Native HDF5 schema
 
 ```
 /                           Root group
+├── atoms/
+│   ├── symbols             [dataset: (Nat,) UTF-8 string]
+│   └── positions           [dataset: (Nat, 3) float64, Å]
 ├── lattice                 [dataset: (3, 3) float64, optional]
 ├── qpoints                 [dataset: (Nq, 3) float64, optional]
-└── atoms/
-    ├── symbols             [dataset: (Nat,) UTF-8 string]
-    └── positions           [dataset: (Nat, 3) float64, Å]
 └── modes/
-    ├── eigenvectors        [dataset: (Nmodes, Nat, 3) float64]
-    │                       [crystal: (Nq, Nb, Nat, 3) float64]
-    ├── frequencies         [dataset: (Nmodes,) float64]
+    ├── eigenvectors        [dataset: (Nmodes, Nat, 3) float16] — molecular
+    │                       [dataset: (Nq, Nb, Nat, 3, 2) float16] — crystal
+    │                       crystal last dim = (real, imag); upcast to complex64 on read
+    ├── frequencies         [dataset: (Nmodes,) float64] — molecular
+    │                       [dataset: (Nq, Nb) float64, chunked+gzip] — crystal
     │   └── units           [attr: string, optional]
-    └── labels              [dataset: (Nmodes,) UTF-8 string, optional]
+    └── labels              [dataset: (Nmodes,) UTF-8 string, optional] — molecular
+                            [dataset: (Nq, Nb) UTF-8 string, optional, chunked+gzip] — crystal
 ```
 
-Molecular data uses 3D eigenvectors; crystal data uses 4D. Crystal files use per-q-point chunking (`chunks=(1, n_bands, n_atoms, 3)`) to enable O(1) HDF5 seek for lazy loading.
+Molecular: 3D float16 eigenvectors (real only). Crystal: 5D float16 stacked as `(real, imag)` pairs, halving file size with no visible quality loss. Both use per-q-point chunking to enable O(1) HDF5 seek for lazy loading.
+
+### Eigenvector precision rationale
+
+Crystal eigenvectors are stored as **float16** (half-precision IEEE 754) real/imaginary pairs rather than complex64 (float32). This was chosen after benchmarking on a 56 MB phonopy file (204 q-points × 72 bands × 24 atoms):
+
+| Storage    | File size | Angular error (max) | Notes                           |
+| ---------- | :-------: | :-----------------: | ------------------------------- |
+| complex64  |  7.58 MB  |          0          | Baseline                        |
+| float16 ×2 |  3.76 MB  |       0.0004°       | 50% reduction, no visual impact |
+
+float16 precision (~0.001 for unit-vector components) is 100× beyond what is needed for pixel-level rendering on 2000 px displays. `Mode.__post_init__` normalizes in complex64 (numpy uses float64 internally) so the on-disk format has no effect on computation precision.
 
 ### Lazy loading
 
@@ -102,7 +123,7 @@ Three modes are selectable via the UI buttons (`Animate`, `Static`, `Overlay`):
 
 ### Mode selection & frequency display
 
-Modes are selected by 0-based index. Frequency is displayed if present. Unit label uses `data.frequency_units` falling back to `config.display.frequency_units` (default `"?"`).
+Modes are selected by frequency-sorted position (0-based internally, 1-indexed in the table UI). Frequency is displayed if present with default sort ascending on this column. Unit label uses `data.frequency_units`. Labels are editable inline for native HDF5 files only; editing sets a dirty flag and enables a Save Labels button. Switching q-points with dirty labels shows a confirmation dialog.
 
 ### Animation engine
 
@@ -161,7 +182,7 @@ CLI overrides > `--config` session YAML > `~/.config/vibview/config.yaml` > pack
 - **Per-mode amplitudes:** `static.amplitude` and `overlay.amplitude` define displacement amplitudes.
 - **Bond detection:** Uses covalent radii + `bond_tolerance`. This method is preferred over a `fixed_cutoff` as it is more physically principled and a single method is sufficient.
 - **Per-element overrides:** Element data lives in the `elements:` section of `defaults.yaml` (single source of truth). Any config layer can override individual radii, colours, and masses.
-- **CLI flag removal:** Configuration is managed via YAML. Only `--mode` and `--qpoint` remain as quick data selection overrides. `vibview init-config` writes a fully-commented template.
+- **CLI flag removal:** Configuration is managed via YAML. Only `--mode`, `--qpoint`, and `--example` remain as quick data selection overrides. `vibview init-config` writes a fully-commented template.
 
 ---
 
@@ -176,28 +197,21 @@ Phonopy band.yaml/mesh.yaml parser supports multi-q-point data with lattice vect
 
 ## 7. Tech Stack
 
-| Component  | Library       | Rationale                            |
-| ---------- | ------------- | ------------------------------------ |
-| Rendering  | vispy + PyQt6 | OpenGL, standalone, X forwarding     |
-| Data       | numpy         | Numerical operations                 |
-| File I/O   | h5py          | HDF5: compression, random access     |
-| Config I/O | pyyaml        | YAML parsing                         |
-| GIF export | Pillow        | Lightweight; no external deps needed |
-| MP4 export | imageio       | H.264 via ffmpeg binary on $PATH     |
+| Component  | Library             | Rationale                            |
+| ---------- | ------------------- | ------------------------------------ |
+| Rendering  | vispy + PyQt6       | OpenGL, standalone, X forwarding     |
+| Platforms  | Linux/macOS/Windows | Cross-platform via pixi/conda-forge  |
+| Data       | numpy               | Numerical operations                 |
+| File I/O   | h5py                | HDF5: compression, random access     |
+| Config I/O | pyyaml              | YAML parsing                         |
+| GIF export | Pillow              | Lightweight; no external deps needed |
+| MP4 export | imageio             | H.264 via ffmpeg binary on $PATH     |
 
 `requires-python = ">=3.10"` for match-statement syntax and `X | Y` type unions.
 
 ---
 
 ## 8. Scope & Rationale
-
-### In scope
-
-- ORCA `.hess` parsing → animate/static/overlay visualization
-- Phonopy band.yaml/mesh.yaml parsing → animate/static/overlay visualization (multi-q-point)
-- Native HDF5 format for fast loading and compact storage
-- Configurable appearance via YAML cascade
-- PNG sequence, GIF, and MP4 export
 
 ### Deferred (may revisit)
 
@@ -212,8 +226,5 @@ Phonopy band.yaml/mesh.yaml parser supports multi-q-point data with lattice vect
 | **`cclib` dependency**                    | Large and complex. Custom parsers provide better control and a smaller footprint.      |
 | **`phonopy` Python API**                  | Heavy dependency. Custom YAML parser is sufficient.                                    |
 | **Additional parsers (VASP, Gaussian)**   | Not needed for current use cases. Adding only upon demand.                             |
-| **WebM export**                           | MP4 covers current needs; no priority.                                                 |
 | **Text-based native formats (JSON/YAML)** | HDF5 provides compression and random access that text formats cannot.                  |
-| **`color_scheme` switching**              | CPK from built-in elements is sufficient; `rendering.atom_color` allows overrides.     |
 | **IR/Raman intensities**                  | Viewer only — no analysis.                                                             |
-| **`mass_weighted` override**              | Each parser handles its own normalisation; Core assumes Cartesian-normalised.          |

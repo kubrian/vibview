@@ -2,22 +2,111 @@
 
 from unittest.mock import MagicMock, patch
 
+import h5py
+import numpy as np
 import pytest
 
+from vibview.config import Config
 from vibview.core import Structure
 from vibview.models import VibData
 
 
 def _make_structure(atoms, modes):
     """Build a Structure from Atom and Mode lists."""
-    internal = VibData(atoms, modes)
-    return Structure(internal)
+    internal = VibData(atoms, modes, frequency_units="?")
+    return Structure(internal, qpoint_loader=None)
 
 
 def _make_structure_with_lattice(atoms, modes, lattice):
-    """Build a Structure with lattice vectors."""
-    internal = VibData(atoms, modes, lattice=lattice)
-    return Structure(internal)
+    """Build a Structure with lattice vectors and Gamma-point q-point."""
+    internal = VibData(
+        atoms,
+        modes,
+        lattice=lattice,
+        qpoints=[[0.0, 0.0, 0.0]],
+        frequency_units="?",
+    )
+    return Structure(internal, qpoint_loader=None)
+
+
+def _make_viewer(structure, **kwargs):
+    """Build a VispyViewer with config defaults."""
+    from vibview.renderers.vispy_renderer import VispyViewer
+
+    defaults = dict(config=Config.defaults(), mode_type="static")
+    defaults.update(kwargs)
+    return VispyViewer(structure, **defaults)
+
+
+def _export(viewer, fmt, name, **kwargs):
+    """Call viewer.export_animation with default cycles=1, progress_callback=None."""
+    defaults = dict(cycles=1, progress_callback=None)
+    defaults.update(kwargs)
+    viewer.export_animation(format=fmt, name=name, **defaults)
+
+
+def _make_crystal_h5(path, n_qpoints=2, n_bands=2, n_atoms=2, labels=None):
+    """Write a minimal crystal HDF5 file with q-points and eigenvectors."""
+    ev = np.zeros((n_qpoints, n_bands, n_atoms, 3, 2), dtype=np.float16)
+    for qi in range(n_qpoints):
+        for bi in range(n_bands):
+            ev[qi, bi, 0, 0, 0] = float(qi * n_bands + bi + 1)
+    freq = np.zeros((n_qpoints, n_bands), dtype=np.float64)
+    freq[0, 0] = 100.0
+    freq[1, 1] = 200.0
+    qpoints = np.array([[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]], dtype=np.float64)
+    lattice = np.array(
+        [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]], dtype=np.float64
+    )
+    symbols = np.array(["O", "H"] * (n_atoms // 2) + ["O"], dtype=h5py.string_dtype())[
+        :n_atoms
+    ]
+    positions = np.zeros((n_atoms, 3), dtype=np.float64)
+    with h5py.File(path, "w") as f:
+        g = f.create_group("atoms")
+        g.create_dataset("symbols", data=symbols)
+        g.create_dataset("positions", data=positions)
+        g = f.create_group("modes")
+        g.create_dataset("eigenvectors", data=ev)
+        g.create_dataset("frequencies", data=freq)
+        g["frequencies"].attrs["units"] = "THz"
+        if labels is not None:
+            g.create_dataset("labels", data=labels)
+        f.create_dataset("lattice", data=lattice)
+        f.create_dataset("qpoints", data=qpoints)
+
+
+def _make_molecular_h5(path, **overrides):
+    """Write a minimal molecular HDF5 file (no q-points)."""
+    n_atoms = overrides.get("n_atoms", 1)
+    n_modes = overrides.get("n_modes", 1)
+    ev = overrides.get(
+        "eigenvectors",
+        np.zeros((n_modes, n_atoms, 3), dtype=np.float16),
+    )
+    freq = overrides.get(
+        "frequencies",
+        np.zeros(n_modes, dtype=np.float64),
+    )
+    symbols = overrides.get(
+        "symbols",
+        np.array(["H"] * n_atoms, dtype=h5py.string_dtype()),
+    )
+    positions = overrides.get(
+        "positions",
+        np.zeros((n_atoms, 3), dtype=np.float64),
+    )
+
+    with h5py.File(path, "w") as f:
+        g = f.create_group("atoms")
+        g.create_dataset("symbols", data=symbols)
+        g.create_dataset("positions", data=positions)
+        g = f.create_group("modes")
+        g.create_dataset("eigenvectors", data=ev)
+        g.create_dataset("frequencies", data=freq)
+        g["frequencies"].attrs["units"] = "cm⁻¹"
+        if overrides.get("labels") is not None:
+            g.create_dataset("labels", data=overrides["labels"])
 
 
 class _MockMesh:
@@ -115,6 +204,10 @@ def _patch_vispy(request):
         mock_camera.return_value.transform = _mock_transform
         mock_camera.return_value.center = (0.0, 0.0, 0.0)
         mock_camera.return_value.distance = 10.0
+        mock_camera.return_value.fov = 0
+        mock_quaternion = MagicMock()
+        mock_quaternion.get_matrix.return_value = np.eye(4, dtype=np.float64)
+        mock_camera.return_value._quaternion = mock_quaternion
         request.instance.mock_canvas = mock_canvas
         request.instance.mock_camera = mock_camera
         request.instance.mock_sphere = mock_sphere

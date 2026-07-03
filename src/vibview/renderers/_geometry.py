@@ -14,19 +14,24 @@ def get_basis_properties(structure, config):
 
     Returns:
         basis_radii: (n_basis,) array of radii (scaled by ``radii_scale``).
-        basis_colors: (n_basis,) array of color strings.
+        basis_colors: (n_basis,) array of :class:`~vibview.config.Color` objects.
     """
     cfg = config.rendering
     n_basis = len(structure.atoms)
     basis_radii = np.empty(n_basis, dtype=np.float64)
     basis_colors = np.empty(n_basis, dtype=object)
     for ai, a in enumerate(structure.atoms):
-        basis_radii[ai] = config.elements[a.symbol].radius * cfg.radii_scale
-        basis_colors[ai] = config.elements[a.symbol].color
+        el = config.elements.get(a.symbol)
+        if el is not None:
+            basis_radii[ai] = el.radius * cfg.radii_scale
+            basis_colors[ai] = el.color
+        else:
+            basis_radii[ai] = cfg.atom_radius * cfg.radii_scale
+            basis_colors[ai] = cfg.atom_color
     return basis_radii, basis_colors
 
 
-def build_cylinder_mesh(segments, radius, color, parent, shading=None, cols=8):
+def build_cylinder_mesh(segments, radius, color, parent, shading, cols):
     """Build a merged visuals.Mesh from cylinder segments.
 
     Args:
@@ -158,8 +163,8 @@ def build_arrow_visuals(
     tip_length,
     color,
     parent,
-    shading=None,
-    cone_offset=0.0,
+    shading,
+    cone_offset,
 ):
     """Create Tube shaft + cone tip visuals for an arrow.
 

@@ -14,34 +14,34 @@ class Structure:
     def __init__(
         self,
         data: VibData,
-        qpoint_loader: Callable[[int], list[Mode]] | None = None,
+        qpoint_loader: Callable[[int], list[Mode]] | None,
     ):
         self.data = data
         self.qpoint_index: int = 0
         self.qpoint_loader = qpoint_loader
         self.atoms = data.atoms
+        self.data.modes.sort(key=lambda m: m.frequency)
         self.modes = data.modes
         self.xyz = np.array([a.xyz for a in self.atoms])
-        self._mode_dict: dict[int, Mode] = {m.index: m for m in data.modes}
 
-    def get_mode(self, mode_index: int) -> Mode:
-        """Get a vibrational mode by index.
+    @property
+    def is_crystal(self) -> bool:
+        """Whether this structure is periodic (has q-points and lattice)."""
+        return self.data.qpoints is not None
+
+    def get_mode(self, position: int) -> Mode:
+        """Get a vibrational mode by its frequency-sorted position.
 
         Args:
-            mode_index: The 0-based mode index.
+            position: The 0-based position in the frequency-sorted list.
 
         Returns:
             The matching Mode.
 
         Raises:
-            ValueError: If no mode with the given index exists.
+            IndexError: If position is out of range.
         """
-        try:
-            return self._mode_dict[mode_index]
-        except KeyError:
-            raise ValueError(
-                f"Mode index {mode_index} not found. Available indices: {list(self._mode_dict)}"
-            )
+        return self.modes[position]
 
     def detect_bonds(
         self, tolerance: float, config: Config
@@ -54,16 +54,15 @@ class Structure:
 
         Returns:
             List of (i, j, distance) tuples for each detected bond.
-
-        Raises:
-            KeyError: If an atom symbol is not in the element database.
         """
         bonds: list[tuple[int, int, float]] = []
         n = len(self.atoms)
         for i in range(n):
             for j in range(i + 1, n):
-                r1 = config.elements[self.atoms[i].symbol].radius
-                r2 = config.elements[self.atoms[j].symbol].radius
+                el1 = config.elements.get(self.atoms[i].symbol)
+                r1 = el1.radius if el1 is not None else config.rendering.atom_radius
+                el2 = config.elements.get(self.atoms[j].symbol)
+                r2 = el2.radius if el2 is not None else config.rendering.atom_radius
                 cutoff = r1 + r2 + tolerance
                 d = np.linalg.norm(self.xyz[i] - self.xyz[j])
                 if d < cutoff:
@@ -79,8 +78,8 @@ class Structure:
             )
         self.qpoint_index = qpoint_index
         self.data.modes = self.qpoint_loader(qpoint_index)
+        self.data.modes.sort(key=lambda m: m.frequency)
         self.modes = self.data.modes
-        self._mode_dict = {m.index: m for m in self.modes}
 
 
 def displacement_scale(eigenvectors: np.ndarray, amplitude: float) -> float:
@@ -127,8 +126,8 @@ def generate_frames(
     mode_index: int,
     frames: int,
     amplitude: float,
-    cycles: int = 1,
-    supercell: tuple[int, int, int] | None = None,
+    cycles: int,
+    supercell: tuple[int, int, int] | None,
 ) -> np.ndarray:
     """Generate animation frames for a given vibrational mode.
 

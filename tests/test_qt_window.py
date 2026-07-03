@@ -7,8 +7,26 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import QSplitter, QWidget
 
+from vibview.config import Color
 from vibview.models import Mode
 from vibview.renderers.qt_window import ModeSelectorPanel, VibviewWindow
+
+
+def _make_window(canvas, modes, **kwargs):
+    defaults = dict(
+        initial_index=0,
+        initial_mode="animate",
+        initial_amplitudes=None,
+        initial_period=1.0,
+        frequency_units="?",
+        imaginary_color=Color.from_hex("#ff4444"),
+        qpoints=None,
+        initial_qpoint=0,
+        initial_supercell=(1, 1, 1),
+        source_path=None,
+    )
+    defaults.update(kwargs)
+    return VibviewWindow(canvas, modes, **defaults)
 
 
 @pytest.fixture(autouse=True)
@@ -20,20 +38,29 @@ def _mock_canvas(_qapp):
 
 class TestVibviewWindow:
     def test_central_widget_is_splitter(self, _mock_canvas):
-        win = VibviewWindow(_mock_canvas, [Mode(0, [[0.0, 0.0, 0.0]])])
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
         cw = win.centralWidget()
         assert isinstance(cw, QSplitter)
         assert cw.orientation() == Qt.Orientation.Horizontal
 
     def test_splitter_contains_panel_and_canvas(self, _mock_canvas):
-        win = VibviewWindow(_mock_canvas, [Mode(0, [[0.0, 0.0, 0.0]])])
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
         splitter = win.centralWidget()
         assert splitter.count() == 2
         assert isinstance(splitter.widget(0), ModeSelectorPanel)
         assert splitter.widget(1) is _mock_canvas.native
 
     def test_f11_toggles_full_screen(self, _mock_canvas):
-        win = VibviewWindow(_mock_canvas, [Mode(0, [[0.0, 0.0, 0.0]])])
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
         with (
             patch.object(win, "showFullScreen") as mock_show_fs,
             patch.object(win, "showNormal") as mock_show_normal,
@@ -49,7 +76,10 @@ class TestVibviewWindow:
             mock_show_normal.assert_called_once()
 
     def test_r_key_calls_camera_reset_callback(self, _mock_canvas):
-        win = VibviewWindow(_mock_canvas, [Mode(0, [[0.0, 0.0, 0.0]])])
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
         reset = MagicMock()
         win.on_camera_reset = reset
         event_r = QKeyEvent(
@@ -59,22 +89,51 @@ class TestVibviewWindow:
         reset.assert_called_once()
 
     def test_r_key_no_callback_does_not_crash(self, _mock_canvas):
-        win = VibviewWindow(_mock_canvas, [Mode(0, [[0.0, 0.0, 0.0]])])
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
         event_r = QKeyEvent(
             QKeyEvent.Type.KeyPress, Qt.Key.Key_R, Qt.KeyboardModifier.NoModifier
         )
         win.keyPressEvent(event_r)
 
+    def test_d_key_calls_hud_toggle_callback(self, _mock_canvas):
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
+        toggle = MagicMock()
+        win.on_toggle_hud = toggle
+        event_d = QKeyEvent(
+            QKeyEvent.Type.KeyPress, Qt.Key.Key_D, Qt.KeyboardModifier.NoModifier
+        )
+        win.keyPressEvent(event_d)
+        toggle.assert_called_once()
+
+    def test_d_key_no_callback_does_not_crash(self, _mock_canvas):
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
+        event_d = QKeyEvent(
+            QKeyEvent.Type.KeyPress, Qt.Key.Key_D, Qt.KeyboardModifier.NoModifier
+        )
+        win.keyPressEvent(event_d)
+
     def test_window_title(self, _mock_canvas):
-        win = VibviewWindow(_mock_canvas, [Mode(0, [[0.0, 0.0, 0.0]])])
+        win = _make_window(
+            _mock_canvas,
+            [Mode([[0.0, 0.0, 0.0]], frequency=0.0)],
+        )
         assert win.windowTitle() == "VibView"
 
 
 class TestVibviewWindowModes:
     def test_modes_passed_to_panel(self, _mock_canvas):
         modes = [
-            Mode(0, [[1.0, 0.0, 0.0]]),
-            Mode(1, [[0.0, 1.0, 0.0]], frequency=500.0, label="test"),
+            Mode([[1.0, 0.0, 0.0]], frequency=0.0),
+            Mode([[0.0, 1.0, 0.0]], frequency=500.0, label="test"),
         ]
-        win = VibviewWindow(_mock_canvas, modes)
+        win = _make_window(_mock_canvas, modes)
         assert win.panel.table.rowCount() == 2

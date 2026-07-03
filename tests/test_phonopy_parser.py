@@ -1,7 +1,6 @@
 """Tests for the self-contained phonopy YAML parser."""
 
 import math
-from functools import partial
 
 import numpy as np
 import pytest
@@ -9,9 +8,7 @@ import pytest
 from vibview.core import Structure
 from vibview.models import Atom, Mode, VibData
 from vibview.parsers import make_qpoint_loader
-from vibview.parsers.phonopy import parse as _parse
-
-parse = partial(_parse, qpoint_index=0)
+from vibview.parsers.phonopy import parse
 
 _O_SQRT2 = 1.0 / math.sqrt(2)
 
@@ -73,7 +70,7 @@ def _write_yaml(tmp_path, text: str):
 class TestPhonopyParserSuccess:
     def test_parse_multi_qpoint(self, tmp_path):
         yaml_path = _write_yaml(tmp_path, PHONOPY_YAML)
-        result = parse(yaml_path)
+        result = parse(yaml_path, qpoint_index=0)
         data = result.data
 
         assert len(data.atoms) == 2
@@ -108,13 +105,13 @@ class TestPhonopyParserSuccess:
 
     def test_atom_mass_from_yaml(self, tmp_path):
         yaml_path = _write_yaml(tmp_path, PHONOPY_YAML)
-        result = parse(yaml_path)
+        result = parse(yaml_path, qpoint_index=0)
         ev = result.data.modes[0].eigenvectors
         assert _norm(ev) == pytest.approx(1.0, abs=1e-10)
 
     def test_lazy_loading_returns_correct_modes_for_each_qpoint(self, tmp_path):
         yaml_path = _write_yaml(tmp_path, PHONOPY_YAML)
-        result = parse(yaml_path)
+        result = parse(yaml_path, qpoint_index=0)
         loader = result.qpoint_loader
 
         modes_q0 = loader(0)
@@ -129,7 +126,7 @@ class TestPhonopyParserSuccess:
 
     def test_structure_switch_qpoint(self, tmp_path):
         yaml_path = _write_yaml(tmp_path, PHONOPY_YAML)
-        result = parse(yaml_path)
+        result = parse(yaml_path, qpoint_index=0)
         structure = Structure(result.data, qpoint_loader=make_qpoint_loader(result))
         assert structure.modes[0].frequency == 0.0
         assert structure.modes[1].frequency == 10.0
@@ -153,27 +150,24 @@ class TestPhonopyParserSuccess:
 def test_switch_qpoint_on_non_qpoint_data_errors():
     data = VibData(
         atoms=[Atom("O", [0.0, 0.0, 0.0])],
-        modes=[Mode(0, [[1.0, 0.0, 0.0]])],
+        modes=[Mode([[1.0, 0.0, 0.0]], frequency=0.0)],
+        frequency_units="?",
     )
-    structure = Structure(data)
+    structure = Structure(data, qpoint_loader=None)
     with pytest.raises(ValueError, match="No q-point data available"):
         structure.switch_qpoint(0)
 
 
 class TestPhonopyParseErrors:
-    def test_missing_yaml(self, tmp_path):
-        with pytest.raises(FileNotFoundError, match="Phonopy YAML file not found"):
-            parse(tmp_path / "nonexistent.yaml")
-
     def test_not_a_dict(self, tmp_path):
         p = _write_yaml(tmp_path, "- just\n- a\n- list\n")
         with pytest.raises(ValueError, match="No 'phonon' section found"):
-            parse(p)
+            parse(p, qpoint_index=0)
 
     def test_no_points(self, tmp_path):
         p = _write_yaml(tmp_path, "phonon: []\n")
         with pytest.raises(ValueError, match="Expected a YAML mapping"):
-            parse(p)
+            parse(p, qpoint_index=0)
 
     def test_no_lattice(self, tmp_path):
         p = _write_yaml(
@@ -181,7 +175,7 @@ class TestPhonopyParseErrors:
             "points:\n- {symbol: O, coordinates: [0,0,0]}\nphonon: []\n",
         )
         with pytest.raises(ValueError, match="No 'lattice' section"):
-            parse(p)
+            parse(p, qpoint_index=0)
 
     def test_no_phonon(self, tmp_path):
         p = _write_yaml(
@@ -189,4 +183,4 @@ class TestPhonopyParseErrors:
             "lattice:\n- [1,0,0]\n- [0,1,0]\n- [0,0,1]\npoints:\n- symbol: O\n  coordinates: [0,0,0]\n",
         )
         with pytest.raises(ValueError, match="No 'phonon' section"):
-            parse(p)
+            parse(p, qpoint_index=0)

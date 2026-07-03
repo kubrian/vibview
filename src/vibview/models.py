@@ -19,14 +19,11 @@ class Mode:
     """A vibrational mode with eigenvectors and optional metadata.
 
     ``eigenvectors`` is a numpy array of shape ``(n_atoms, 3)`` with
-    ``complex64`` dtype.
-
-    They are normalized to unit vectors.
+    ``complex64`` dtype, normalized to unit vectors.
     """
 
-    index: int
     eigenvectors: np.ndarray
-    frequency: float | None = None
+    frequency: float
     label: str | None = None
 
     def __post_init__(self) -> None:
@@ -47,17 +44,22 @@ class VibData:
 
     atoms: list[Atom]
     modes: list[Mode]
+    frequency_units: str
     qpoints: list[list[float]] | None = None
     lattice: list[list[float]] | None = None
-    frequency_units: str | None = None
 
     def __post_init__(self):
         if not self.atoms:
             raise ValueError("Atoms list cannot be empty")
+        if (self.qpoints is None) != (self.lattice is None):
+            raise ValueError(
+                "Molecular structures must have neither q-points nor lattice; "
+                "periodic structures must have both"
+            )
         for mode in self.modes:
             if len(mode.eigenvectors) != len(self.atoms):
                 raise ValueError(
-                    f"Mode {mode.index} has {len(mode.eigenvectors)} eigenvectors, expected {len(self.atoms)}"
+                    f"Mode has {len(mode.eigenvectors)} eigenvectors, expected {len(self.atoms)}"
                 )
 
 
@@ -72,5 +74,5 @@ class ParseResult:
     """
 
     data: VibData
-    source: str | None = None
-    qpoint_loader: Callable[[int], list[Mode]] | None = None
+    source: str | None
+    qpoint_loader: Callable[[int], list[Mode]] | None

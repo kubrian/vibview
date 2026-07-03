@@ -28,13 +28,13 @@ class BondManager:
         self.transforms.clear()
         self.indices.clear()
 
-    def add_placeholder(self):
+    def add_bond(self):
         """Add a default-aligned tube (shaft along +z); call update_transforms to position it."""
         cfg = self.config.rendering
         tube = visuals.Tube(
             points=np.array([[0.0, 0.0, -0.5], [0.0, 0.0, 0.5]]),
             radius=cfg.bond_radius,
-            color=cfg.bond_color,
+            color=cfg.bond_color.rgba,
             parent=self.view_scene,
             shading=cfg.effective_shading,
         )
@@ -67,13 +67,13 @@ class BondManager:
             tr.matrix = S @ rot.matrix
             tr.translate(mid)
 
-    def build_merged_mesh(self, bond_indices, positions, bond_radius, parent, cols=12):
+    def build_merged_mesh(self, bond_indices, positions, bond_radius, parent, cols):
         segments = [(positions[i], positions[j]) for i, j in bond_indices]
         cfg = self.config.rendering
         mesh = build_cylinder_mesh(
             segments,
             bond_radius,
-            cfg.bond_color,
+            cfg.bond_color.rgba,
             parent,
             shading=cfg.effective_shading,
             cols=cols,

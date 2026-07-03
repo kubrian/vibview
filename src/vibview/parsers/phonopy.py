@@ -105,9 +105,7 @@ def _parse_qpoint_entry(
     q_modes: list[Mode] = []
     for bi, band in enumerate(bands):
         ev = _parse_eigenvector(band["eigenvector"], n_atoms, masses)
-        q_modes.append(
-            Mode(index=bi, eigenvectors=ev, frequency=float(band["frequency"]))
-        )
+        q_modes.append(Mode(eigenvectors=ev, frequency=float(band["frequency"])))
     return q_modes
 
 
@@ -146,11 +144,7 @@ def parse(
     path: Path,
     qpoint_index: int,
 ) -> ParseResult:
-    yaml_path = Path(path)
-    if not yaml_path.exists():
-        raise FileNotFoundError(f"Phonopy YAML file not found: {yaml_path}")
-
-    with open(yaml_path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         lines = f.readlines()
 
     phonon_idx = None
@@ -188,7 +182,8 @@ def parse(
             modes=initial_modes,
             qpoints=qpoints,
             lattice=lattice.tolist(),
+            frequency_units="THz",
         ),
-        source=str(yaml_path),
+        source=str(path),
         qpoint_loader=qp_loader,
     )

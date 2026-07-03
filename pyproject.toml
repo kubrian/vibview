@@ -4,6 +4,7 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.10",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Visualization",
@@ -16,6 +17,7 @@ dependencies = [
     "h5py>=3.8,<4",
     "Pillow>=11.0,<12",
     "imageio>=2.34,<3",
+    "imageio-ffmpeg>=0.6.0,<0.7",
 ]
 description = "Vibrational mode visualization tool for computational chemistry"
 license = {file = "LICENSE"}
@@ -23,7 +25,7 @@ license-files = ["LICENSE"]
 name = "vibview"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.1.0"
+version = "0.2.0"
 
 [project.urls]
 Homepage = "https://kubrian.github.io/vibview"
@@ -47,7 +49,7 @@ requires = ["hatchling"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
 vibview = { path = ".", editable = true }
@@ -82,6 +84,7 @@ imageio-ffmpeg = ">=0.6.0,<0.7"
 mkdocs = ">=1.6"
 mkdocs-material = ">=9.5"
 mkdocstrings = ">=0.25"
+pre-commit = ">=4.2,<5"
 mkdocstrings-python = ">=1.10"
 
 [tool.ruff]

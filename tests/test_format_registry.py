@@ -4,15 +4,15 @@ import h5py
 import numpy as np
 import pytest
 
-from vibview.parsers import PARSERS, parse
+from vibview.parsers import PARSER_NAMES, parse
 
 
 class TestRegistryContents:
     def test_native_registered(self):
-        assert "native" in PARSERS
+        assert "native" in PARSER_NAMES
 
     def test_orca_registered(self):
-        assert "orca" in PARSERS
+        assert "orca" in PARSER_NAMES
 
     def test_registry_mapping(self, tmp_path):
         p = tmp_path / "test.h5"
@@ -25,8 +25,9 @@ class TestRegistryContents:
                 "eigenvectors",
                 data=np.array([[[1.0, 0.0, 0.0]]], dtype=np.float64),
             )
-            g.create_dataset("frequencies", data=np.array([np.nan], dtype=np.float64))
-        result = parse(p, "native")
+            g.create_dataset("frequencies", data=np.array([0.0], dtype=np.float64))
+            g["frequencies"].attrs["units"] = "cm⁻¹"
+        result = parse(p, "native", qpoint_index=0)
         assert result.source == str(p)
 
     def test_orca_dispatched_via_registry(self, tmp_path):
@@ -56,7 +57,7 @@ $normal_modes
 """
         p = tmp_path / "h2o.hess"
         p.write_text(content)
-        result = parse(p, "orca")
+        result = parse(p, "orca", qpoint_index=0)
         data = result.data
         assert len(data.atoms) == 3
         assert len(data.modes) == 1
@@ -68,10 +69,10 @@ class TestRegistryErrors:
         p = tmp_path / "foo.xyz"
         p.write_text("")
         with pytest.raises(ValueError, match="Unknown format"):
-            parse(p, "nonexistent")
+            parse(p, "nonexistent", qpoint_index=0)
 
     def test_unknown_format_message_lists_available(self, tmp_path):
         p = tmp_path / "foo.xyz"
         p.write_text("")
         with pytest.raises(ValueError, match="native.*orca"):
-            parse(p, "bogus")
+            parse(p, "bogus", qpoint_index=0)

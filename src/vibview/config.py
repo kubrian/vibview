@@ -1,15 +1,17 @@
 """Configuration loading, merging, and typed access."""
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from functools import cache
 from importlib.resources import files as resource_files
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import yaml
 
 USER_CONFIG_PATH = Path.home() / ".config" / "vibview" / "config.yaml"
+
+_AUTO = float("inf")
 
 _SUBDIVISION_PRESETS: dict[str, int] = {
     "low": 1,
@@ -24,6 +26,51 @@ def _load_defaults() -> dict[str, Any]:
     path = resource_files("vibview.data").joinpath("defaults.yaml")
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+@dataclass(frozen=True)
+class Color:
+    """An RGBA colour value with components in ``[0, 1]``.
+
+    Parsed from hex strings at config-load time.
+    """
+
+    r: float
+    g: float
+    b: float
+    a: float = 1.0
+
+    def __post_init__(self):
+        for name, val in zip(("r", "g", "b", "a"), (self.r, self.g, self.b, self.a)):
+            if not 0.0 <= val <= 1.0:
+                raise ValueError(f"Color.{name} must be between 0 and 1, got {val}")
+
+    @classmethod
+    def from_hex(cls, hex_str: str) -> "Color":
+        if not hex_str.startswith("#") or len(hex_str) != 7:
+            raise ValueError(
+                f"Color hex string must be '#rrggbb' (7 chars), got {hex_str!r}"
+            )
+        try:
+            r = int(hex_str[1:3], 16) / 255.0
+            g = int(hex_str[3:5], 16) / 255.0
+            b = int(hex_str[5:7], 16) / 255.0
+        except ValueError:
+            raise ValueError(
+                f"Color hex string contains invalid characters: {hex_str!r}"
+            )
+        return cls(r, g, b)
+
+    def to_hex(self) -> str:
+        return f"#{int(round(self.r * 255)):02x}{int(round(self.g * 255)):02x}{int(round(self.b * 255)):02x}"
+
+    @property
+    def rgb(self) -> tuple[float, float, float]:
+        return (self.r, self.g, self.b)
+
+    @property
+    def rgba(self) -> tuple[float, float, float, float]:
+        return (self.r, self.g, self.b, self.a)
 
 
 @dataclass
@@ -43,11 +90,11 @@ class RenderingConfig:
 
     quality: str
     shading: str | None
-    background_color: str
-    atom_color: str
+    background_color: Color
+    atom_color: Color
     atom_radius: float
     radii_scale: float
-    bond_color: str
+    bond_color: Color
     bond_radius: float
     bond_tolerance: float
 
@@ -107,7 +154,7 @@ class AnimationConfig:
 class LatticeConfig:
     """Configuration for unit-cell lattice box appearance."""
 
-    color: str
+    color: Color
     width: float
     alpha: float
 
@@ -123,7 +170,7 @@ class StaticOverlayConfig:
     """Configuration for static-mode arrow overlays."""
 
     amplitude: float
-    arrow_color: str
+    arrow_color: Color
     arrow_shaft_radius_factor: float
     arrow_tip_radius_factor: float
     arrow_tip_length_factor: float
@@ -135,10 +182,10 @@ class OverlayConfig:
     """Configuration for overlay-mode wireframe appearance."""
 
     amplitude: float
-    eq_color: str
+    eq_color: Color
     eq_alpha: float
     eq_radius_multiplier: float
-    disp_color: str
+    disp_color: Color
     disp_alpha: float
     disp_radius_multiplier: float
 
@@ -192,6 +239,16 @@ class CameraConfig:
     axis_view_padding: int
     axis_camera_distance: float
     axis_camera_fov: float
+    center: tuple[float, float, float]
+    distance: float
+    azimuth: float
+    elevation: float
+    show_hud: bool
+    hud_font_size: int
+    hud_linespace: int
+    hud_margin: int
+    hud_color: Color
+    hud_alpha: float
 
     def __post_init__(self):
         if isinstance(self.default_window_size, list):
@@ -202,42 +259,96 @@ class CameraConfig:
             )
         if self.fill_factor <= 0 or self.fill_factor > 1:
             raise ValueError(f"fill_factor must be in (0, 1], got {self.fill_factor}")
-        if self.fov <= 0 or self.fov >= 180:
+        if self.fov < 0 or self.fov >= 180:
             raise ValueError(f"fov must be between 0 and 180, got {self.fov}")
+        if isinstance(self.center, str):
+            if self.center != "auto":
+                raise ValueError(
+                    f"center: expected a list or 'auto', got {self.center!r}"
+                )
+            self.center = (_AUTO,) * 3
+        if isinstance(self.center, list):
+            self.center = tuple(self.center)
+        if len(self.center) != 3:
+            raise ValueError(f"center must have 3 elements, got {len(self.center)}")
+        if isinstance(self.distance, str):
+            if self.distance != "auto":
+                raise ValueError(
+                    f"distance: expected a number or 'auto', got {self.distance!r}"
+                )
+            self.distance = _AUTO
+        if isinstance(self.azimuth, str):
+            if self.azimuth != "auto":
+                raise ValueError(
+                    f"azimuth: expected a number or 'auto', got {self.azimuth!r}"
+                )
+            self.azimuth = _AUTO
+        if isinstance(self.elevation, str):
+            if self.elevation != "auto":
+                raise ValueError(
+                    f"elevation: expected a number or 'auto', got {self.elevation!r}"
+                )
+            self.elevation = _AUTO
+        if self.distance != _AUTO and self.distance <= 0:
+            raise ValueError(f"distance must be positive, got {self.distance}")
+        if self.elevation != _AUTO and (self.elevation < -90 or self.elevation > 90):
+            raise ValueError(
+                f"elevation must be between -90 and 90, got {self.elevation}"
+            )
+        if self.hud_font_size <= 0:
+            raise ValueError(
+                f"hud_font_size must be positive, got {self.hud_font_size}"
+            )
+        if self.hud_linespace < 0:
+            raise ValueError(
+                f"hud_linespace must be non-negative, got {self.hud_linespace}"
+            )
+        if self.hud_margin < 0:
+            raise ValueError(f"hud_margin must be non-negative, got {self.hud_margin}")
+        if not 0 <= self.hud_alpha <= 1:
+            raise ValueError(f"hud_alpha must be between 0 and 1, got {self.hud_alpha}")
 
 
 @dataclass
 class AxisConfig:
-    """Configuration for coordinate axis indicator appearance."""
+    """Configuration for coordinate axis indicator appearance.
+
+    Controls the arrows and labels drawn in the orthographic axis
+    sub-view (lower-left corner of the canvas).
+
+    Args:
+        shaft_radius: Tube radius for the arrow shaft (Å).
+        tip_radius: Base radius of the cone tip (Å).
+        tip_length: Length of the cone tip (Å).
+        colors: Three colours, one per axis — used for Cartesian
+            (x, y, z) when no lattice is present, or lattice
+            (a, b, c) when a lattice is available.
+        arrow_length: Total arrow length from origin to tip end (Å).
+        label_offset: Distance from the arrow tip to the label (Å).
+        label_font_size: Label text font size in pixels.
+    """
 
     shaft_radius: float
-    lattice_shaft_radius: float
-    tip_length_factor: float
-    tip_length_max: float
-    tip_radius_factor: float
-    colors_lattice: tuple[str, str, str]
-    colors_cartesian: tuple[str, str, str]
+    tip_radius: float
+    tip_length: float
+    colors: tuple[Color, Color, Color]
     arrow_length: float
     label_offset: float
     label_font_size: int
 
     def __post_init__(self):
-        for attr in ("colors_lattice", "colors_cartesian"):
-            val = getattr(self, attr)
-            if isinstance(val, list):
-                setattr(self, attr, tuple(val))
-            if len(getattr(self, attr)) != 3:
-                raise ValueError(
-                    f"{attr} must have 3 elements, got {len(getattr(self, attr))}"
-                )
+        val = self.colors
+        if isinstance(val, list):
+            self.colors = tuple(val)
+        if len(self.colors) != 3:
+            raise ValueError(f"colors must have 3 elements, got {len(self.colors)}")
 
 
 @dataclass
 class DisplayConfig:
     """Configuration for display metadata (units, colours, overlays)."""
 
-    frequency_units: str
-    imaginary_color: str
+    imaginary_color: Color
     show_axis: bool
     supercell: tuple[int, int, int]
 
@@ -264,17 +375,13 @@ class ElementConfig:
     """Properties of a chemical element — radius, colour, mass."""
 
     radius: float
-    color: str
+    color: Color
     mass: float
 
     def __post_init__(self):
         if not isinstance(self.radius, (int, float)):
             raise TypeError(
                 f"ElementConfig.radius must be int or float, got {type(self.radius).__name__}"
-            )
-        if not isinstance(self.color, str):
-            raise TypeError(
-                f"ElementConfig.color must be str, got {type(self.color).__name__}"
             )
         if not isinstance(self.mass, (int, float)):
             raise TypeError(
@@ -296,12 +403,24 @@ class Config:
     axis: AxisConfig
     display: DisplayConfig
     export: ExportConfig
-    elements: dict[str, ElementConfig] = field(default_factory=dict, repr=False)
+    elements: dict[str, ElementConfig]
 
     @classmethod
     def defaults(cls) -> "Config":
         """Create a Config populated from the bundled defaults.yaml."""
         return cls.from_dict(_load_defaults())
+
+    _COLOR_FIELDS: ClassVar[dict[str, set[str]]] = {
+        "rendering": {"background_color", "atom_color", "bond_color"},
+        "lattice": {"color"},
+        "static": {"arrow_color"},
+        "overlay": {"eq_color", "disp_color"},
+        "display": {"imaginary_color"},
+        "camera": {"hud_color"},
+    }
+    _COLOR_TUPLE_FIELDS: ClassVar[dict[str, set[str]]] = {
+        "axis": {"colors"},
+    }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Config":
@@ -315,15 +434,27 @@ class Config:
                 )
             known = set(field_cls.__dataclass_fields__)
             filtered = {k: v for k, v in val.items() if k in known}
+            # Convert hex strings to Color objects
+            for fname in cls._COLOR_FIELDS.get(key, ()):
+                if fname in filtered:
+                    filtered[fname] = Color.from_hex(filtered[fname])
+            for fname in cls._COLOR_TUPLE_FIELDS.get(key, ()):
+                if fname in filtered:
+                    filtered[fname] = tuple(Color.from_hex(s) for s in filtered[fname])
             kwargs[key] = field_cls(**filtered)
         elements_raw = d.get("elements", {})
         kwargs["elements"] = {
-            symbol: ElementConfig(**props) for symbol, props in elements_raw.items()
+            symbol: ElementConfig(
+                radius=props["radius"],
+                color=Color.from_hex(props["color"]),
+                mass=props["mass"],
+            )
+            for symbol, props in elements_raw.items()
         }
         return cls(**kwargs)
 
     @classmethod
-    def load(cls, session_config: Path | None = None) -> "Config":
+    def load(cls, session_config: Path | None) -> "Config":
         """Config cascade: session config > user config > defaults."""
         cfg = dict(_load_defaults())
 
